@@ -1,6 +1,10 @@
 use std::env;
 use std::process;
 use std::fs;
+use std::io::BufReader;
+use std::io::prelude::*;
+use std::fs::File;
+use std::fs::OpenOptions;
 
 pub struct Config {
     pub workdir: String,
@@ -27,17 +31,26 @@ impl Config {
 
 pub struct Todo {
     pub todo: Vec<String>,
-    pub todofile: String,
+    pub todofile: fs::File,
 }
 
 impl Todo {
     pub fn new (workdir: String) -> Result<Self,String> {
-        let todofile = format!("{}/TODO",workdir);
-        let todo = match fs::read_to_string(&todofile){
-            Ok(t) => t,
-            Err(e) => return Err(String::from("Couldnt read file"))
-        };
-        let todo = todo.lines().map(str::to_string).collect();
+
+        let filepath = format!("{}/TODO",workdir); 
+//        let todofile = File::open(filepath).unwrap();
+        let mut todofile = match OpenOptions::new()
+            .write(true)
+            .read(true)
+            .append(true)
+            .open("TODO") {
+                Ok(t) => t,
+                Err(e) => return Err(String::from("kurwa"))
+            };
+       let mut buf_reader = BufReader::new(&todofile);
+       let mut contents = String::new();
+       buf_reader.read_to_string(&mut contents).unwrap();
+        let todo = contents.lines().map(str::to_string).collect();
 
         Ok(Self{todo,todofile})
     }
@@ -49,6 +62,7 @@ impl Todo {
     }
     
     pub fn add (&self, element: String) {
-        println!("jd"); 
+        println!("jd");
+        writeln!(&self.todofile, "jd orka");
     }
 }

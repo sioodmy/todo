@@ -28,6 +28,7 @@ fn main() {
         for arg in args {
             match &arg[..] {
                     "list" | "l" | "ls" => todo.list(),
+                    "add" | "new" | "n" | "a" => todo.add();
                     _ => println!("zjebaes"),
             }
         }
