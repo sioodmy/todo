@@ -6,6 +6,8 @@ A lightweight and super fast cli todo program written in rust
 use `cargo build --release` to compile todo and copy `target/release/todo` to `/usr/bin`
 ## note
 todo is still really early in development so be careful or sth
+
+btw i know that my code is not the best but im still learing 
 ## usage
 `todo list` - displays a list of all todo's
 
