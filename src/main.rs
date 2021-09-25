@@ -4,14 +4,6 @@ use std::process;
 
 fn main() {
 
-
-    let config = match Config::new() {
-        Ok(c) => c,
-        Err(e) => { 
-            eprintln!("Couldn't load config");
-            process::exit(1);
-        }
-    };
     let todo = match Todo::new() {
         Ok(t) => t,
         Err(e) => {
@@ -30,15 +22,9 @@ fn main() {
                     "add" => todo.add(&args[2]),
                     "rm" => todo.remove(&args[2]),
                     "done" => todo.done(&args[2]),
-                    "clear" => todo.clear(),
-                    "help" => help(),
                     _ => ()
             }
-    } else {
-        if todo.todo.len() > 5 {
-            todo.list();
-        }
-    }
+    }  
     
 }
 

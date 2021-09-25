@@ -9,28 +9,6 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use colored::*;
 
-pub struct Config {
-    pub workdir: String,
-    pub editor: String,
-}
-
-impl Config {
-    pub fn new () -> Result<Self,String> {
-        //Reads EDITOR env variable 
-        let editor = match env::var("EDITOR") {
-            Ok(e) => e,
-            Err(e) => String::from("vim")
-        };
-        //Reads working directory variable
-        let workdir = match env::var("PWD") {
-            Ok(w) => w,
-            Err(e) => return Err(String::from("Couldn't get working directory")) 
-        };
-
-        Ok(Self { editor, workdir})
-
-    }
-}
 pub struct Todo {
     pub todo: Vec<String>,
 }
