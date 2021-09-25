@@ -1,5 +1,4 @@
-use todo::Config;
-use todo::Todo;
+use todo::*;
 use std::env;
 use std::process;
 
@@ -13,10 +12,10 @@ fn main() {
             process::exit(1);
         }
     };
-    let todo = match Todo::new(config.workdir) {
+    let todo = match Todo::new() {
         Ok(t) => t,
         Err(e) => {
-            eprintln!("Couldn't create TODO instance: \n {} ", e);
+            eprintln!("Couldn't create TODO instance: {:?} ", e);
             process::exit(1);
         }
     };
@@ -25,12 +24,19 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 1 {
-        for arg in args {
-            match &arg[..] {
-                    "list" | "l" | "ls" => todo.list(),
-                    "add" | "new" | "n" | "a" => todo.add();
-                    _ => println!("zjebaes"),
+        let command = &args[1];   
+        match &command[..] {
+                    "list" => todo.list(),
+                    "add" => todo.add(&args[2]),
+                    "rm" => todo.remove(&args[2]),
+                    "done" => todo.done(&args[2]),
+                    "clear" => todo.clear(),
+                    "help" => help(),
+                    _ => ()
             }
+    } else {
+        if todo.todo.len() > 5 {
+            todo.list();
         }
     }
     
