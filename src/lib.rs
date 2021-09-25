@@ -181,13 +181,4 @@ impl Todo {
     }
 }
 
-pub fn help () {
-    println!("Usage: todo [OPTION] \"task\"\
-    \nSimple todo cli tool\
-    \nExample: todo add \"buy apples\"\
-    \nCommands:\n
-    x
-    r
-    ");
 
-}
