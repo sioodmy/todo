@@ -1,5 +1,5 @@
 # todo
-A lightweight and super fast cli todo program written in rust
+A lightweight and super fast cli todo program written in rust under 200 sloc
 
 ![gif](todo.gif)
 ## installation
