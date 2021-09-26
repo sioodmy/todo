@@ -85,25 +85,21 @@ impl Todo {
     }
 
     // Removes a task
-    pub fn remove (&self, element: &str) {
+    pub fn remove (&self, args: &[String]) {
         
-        // Converts a string slice into a usize variable
-        let element = element.parse::<usize>()
-            .expect("Argument should be an integer");
-
-        // Saves the line to be deleted
-        let rm = &self.todo[element-1];
 
         // Creates a new empty string
         let mut newtodo = String::new();
 
    
         
-        for line in self.todo.iter() {
-            if line != rm {
-                let line = format!("{}\n", line);
-                newtodo.push_str(&line[..]);
+        for (pos, line) in self.todo.iter().enumerate() {
+            if args.contains(&(pos+1).to_string()) {
+                continue;
             }
+           
+            let line = format!("{}\n", line);
+            newtodo.push_str(&line[..]);
         }
         
         // Opens the TODO file with a permission to:

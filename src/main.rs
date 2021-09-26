@@ -20,7 +20,7 @@ fn main() {
         match &command[..] {
                     "list" => todo.list(),
                     "add" => todo.add(&args[2]),
-                    "rm" => todo.remove(&args[2]),
+                    "rm" => todo.remove(&args[2..]),
                     "done" => todo.done(&args[2..]),
                     _ => ()
             }
