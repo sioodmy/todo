@@ -120,26 +120,16 @@ impl Todo {
     }
 
 
-    pub fn done (&self, element: &str) {
+    pub fn done (&self, args: &[String]) {
         
-        // Converts a string slice into a usize variable
-        let element = element.parse::<usize>()
-            .expect("Argument must be an integer");
-
-        // Saves the line to be deleted
-        let done = &self.todo[element-1];
 
         // Creates a new empty string
         let mut newtodo = String::new();
 
    
-        
-        for line in self.todo.iter() {
+        for (pos, line) in self.todo.iter().enumerate() {
             if line.len() > 5 {
-                if line != done {
-                    let line = format!("{}\n", line);
-                    newtodo.push_str(&line[..]);
-                } else if line == done {
+                    if  args.contains(&(pos+1).to_string()){
 
                     if &line[..4] == "[ ] "{
                         let line = format!("[*] {}\n", &line[4..]);
@@ -149,7 +139,12 @@ impl Todo {
                         newtodo.push_str(&line[..]);
                     }
         
-                }
+                } else {
+                    if &line[..4] == "[ ] " || &line[..4] == "[*] " {
+                        let line = format!("{}\n", line);
+                        newtodo.push_str(&line[..]);
+                    }
+                } 
             }
         }
         
