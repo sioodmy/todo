@@ -1,5 +1,4 @@
-use std::io::BufReader;
-use std::io::Write;
+use std::io::{BufReader, Write};
 use std::io::prelude::*;
 use std::fs::OpenOptions;
 use colored::*;
@@ -41,13 +40,13 @@ impl Todo {
         
         // This loop will repeat itself for each taks in TODO file
         for task in self.todo.iter() {
-            
+           
+            if task.len() > 5 {
             // Converts virgin default number into a chad BOLD string
             let number = i.to_string().bold();
 
             // Saves the symbol of current task
             let symbol = &task[..4];
-
             // Saves a task without a symbol
             let task = &task[4..];
 
@@ -66,12 +65,12 @@ impl Todo {
 
                 // Increases the i variable by 1
             i = i+1;
-        
+            } 
         }
     }
    
     // Adds a new todo
-    pub fn add (&self, element: &str) {
+    pub fn add (&self, args: &[String]) {
         
         // Opens the TODO file with a permission to:
         let mut todofile = OpenOptions::new()
@@ -80,8 +79,15 @@ impl Todo {
             .open("TODO")
             .expect("Couldn't open the todofile");
 
-        // Appends a new task to the file
-        writeln!(todofile, "[ ] {}", element).unwrap();
+        let mut newtodo = String::new();
+        
+        for arg in args {
+            let line = format!("[ ] {}\n", arg);
+            newtodo.push_str(&line);
+        }
+        
+        // Appends a new task/s to the file
+        writeln!(todofile,"{}", newtodo).unwrap();
     }
 
     // Removes a task
