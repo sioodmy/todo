@@ -89,7 +89,7 @@ impl Todo {
         
         // Converts a string slice into a usize variable
         let element = element.parse::<usize>()
-            .expect("Argument must be an integer");
+            .expect("Argument should be an integer");
 
         // Saves the line to be deleted
         let rm = &self.todo[element-1];
@@ -165,5 +165,4 @@ impl Todo {
     }
 
 }
-
 
