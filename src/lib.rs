@@ -1,11 +1,6 @@
-use std::env;
-use std::process;
-use std::fs;
 use std::io::BufReader;
-use std::io::BufWriter;
 use std::io::Write;
 use std::io::prelude::*;
-use std::fs::File;
 use std::fs::OpenOptions;
 use colored::*;
 
@@ -169,16 +164,6 @@ impl Todo {
 //        write!(&self.todofile, "{}", newtodo).unwrap();
     }
 
-    pub fn clear (&self) {
-        let mut todofile = OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .open("TODO")
-            .expect("Couldn't open the todofile");
-
-        todofile.set_len(0)
-            .expect("Couldn't clear the todofile");
-    }
 }
 
 
