@@ -36,14 +36,13 @@ impl Todo {
 
     // Prints every todo
     pub fn list (&self) {
-        let mut i = 1;
         
         // This loop will repeat itself for each taks in TODO file
-        for task in self.todo.iter() {
+        for (number, task) in self.todo.iter().enumerate() {
            
             if task.len() > 5 {
             // Converts virgin default number into a chad BOLD string
-            let number = i.to_string().bold();
+            let number = (number+1).to_string().bold();
 
             // Saves the symbol of current task
             let symbol = &task[..4];
@@ -63,12 +62,49 @@ impl Todo {
                 println!("{} {}",number , task);
             }
 
-                // Increases the i variable by 1
-            i = i+1;
             } 
         }
     }
-   
+  
+
+    // This one is for yall, dmenu chads <3
+    pub fn raw (&self, arg: &[String]) {
+       
+        
+        if arg.len() > 1 {
+            eprintln!("todo raw takes only 1 argument, not {}", arg.len())
+        } else if arg.len() < 1 {
+            eprintln!("todo raw takes 1 argument (done/todo)");
+        } else {
+            
+        
+        
+        // This loop will repeat itself for each taks in TODO file
+        for task in self.todo.iter() {
+           
+            if task.len() > 5 {
+
+            // Saves the symbol of current task
+            let symbol = &task[..4];
+            // Saves a task without a symbol
+            let task = &task[4..];
+
+            // Checks if the current task is completed or not...
+            if symbol == "[*] " && arg[0] == "done" {
+                // DONE
+                //If the task is completed, then it prints it with a strikethrough 
+                println!("{}", task); 
+            } else if symbol == "[ ] " && arg[0] == "todo" {
+                // NOT DONE
+
+                //If the task is not completed yet, then it will print it as it is
+                println!("{}", task);
+            }
+
+            } 
+        }
+    }
+    }
     // Adds a new todo
     pub fn add (&self, args: &[String]) {
         
@@ -221,5 +257,8 @@ Available commands:
     - sort
         sorts completed and uncompleted tasks
         Example: todo sort 
+    - raw [todo/done]
+        prints nothing but done/incompleted tasks in plain text, useful for scripting
+        Example: todo raw done
         ");
 }
