@@ -1,27 +1,24 @@
-# This is an example PKGBUILD file. Use this as a start to creating your own,
-# and remove these comments. For more information, see 'man PKGBUILD'.
-# NOTE: Please fill out the license field for your package! If it is unknown,
-# then please put 'unknown'.
+# Maintainer: Kied Llaentenn <@kiedtl>
+# Maintainer: ValleyKnight <valleyknight@protonmail.com>
 
-# Maintainer: sioodmy <a.sokolowski06@gmail.com>
-pkgname=todo-git
-pkgver=1.0
+pkgname=todo-bin
+pkgver=2.0
 pkgrel=1
-pkgdesc="Simple and super fast task organizer written in rust under 200 sloc"
-arch=(x86_64 i686 aarch64)
-url="https://github.com/sioodmy/todo.git"
+pkgdesc="Super fast and simple tasks organizer written in rust"
+url="https://github.com/sioodmy/todo"
 license=('GPL')
-makedepends=(cargo git)
-source=("git+$url")
-md5sums=(SKIP)
-
-build() {
-	cd todo
-	cargo build --release
-}
+conflicts=('todo-git')
+depends=()
+makedepends=()
+arch=("x86_64")
+source=("https://github.com/sioodmy/todo/releases/download/${pkgver}/todo"
+		"https://raw.githubusercontent.com/sioodmy/todo/master/LICENSE")
 
 package() {
-	mkdir -p "${pkgdir}/usr/bin"
-	cd todo
-	install -Dm 755 "target/release/todo" "${pkgdir}/usr/bin/todo"
+	mkdir -p ${pkgdir}/usr/bin
+	mkdir -p ${pkgdir}/usr/share/licenses/${pkgname}
+
+	install -Dm 755 ${srcdir}/rsfetch ${pkgdir}/usr/bin/todo
+	install -Dm 644 ${srcdir}/LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
+
