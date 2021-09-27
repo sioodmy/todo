@@ -1,6 +1,7 @@
 use std::io::{BufReader, Write};
 use std::io::prelude::*;
 use std::fs::OpenOptions;
+use std::process;
 use colored::*;
 
 pub struct Todo {
@@ -108,6 +109,10 @@ impl Todo {
     // Adds a new todo
     pub fn add (&self, args: &[String]) {
         
+        if args.len() < 1 {
+            eprintln!("todo add takes at least 1 argument");
+            process::exit(1);
+        } else {
         // Opens the TODO file with a permission to:
         let mut todofile = OpenOptions::new()
             .create(true) // a) create the file if it does not exist 
@@ -124,12 +129,16 @@ impl Todo {
         
         // Appends a new task/s to the file
         writeln!(todofile,"{}", newtodo).unwrap();
+        }
     }
 
     // Removes a task
     pub fn remove (&self, args: &[String]) {
         
-
+        if args.len() < 1 {
+            eprintln!("todo rm takes at least 1 argument");
+            process::exit(1);
+        } else {
         // Creates a new empty string
         let mut newtodo = String::new();
 
@@ -154,7 +163,7 @@ impl Todo {
         // Writes contents of a newtodo variable into the TODO file 
         todofile.write_all(newtodo.as_bytes())
             .expect("Error while trying to save the todofile");
-//        write!(&self.todofile, "{}", newtodo).unwrap();
+            }
     }
 
 
@@ -196,7 +205,10 @@ impl Todo {
 
     pub fn done (&self, args: &[String]) {
         
-
+        if args.len() < 1 {
+            eprintln!("todo done takes at least 1 argument");
+            process::exit(1);
+        } else {
         // Creates a new empty string
         let mut newtodo = String::new();
 
@@ -231,6 +243,7 @@ impl Todo {
         // Writes contents of a newtodo variable into the TODO file 
         f.write_all(newtodo.as_bytes()).expect("Error while trying to save the todofile");
 //        write!(&self.todofile, "{}", newtodo).unwrap();
+        }
     }
 
 }
@@ -242,7 +255,7 @@ pub fn help() {
 Todo is a super fast and simple tasks organizer written in rust
 Example: todo list
 Available commands:
-    - new [TASK/s] 
+    -add [TASK/s] 
         adds new task/s
         Example: todo add \"buy carrots\"
     - list
