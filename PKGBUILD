@@ -1,6 +1,4 @@
-# Maintainer: Kied Llaentenn <@kiedtl>
-# Maintainer: ValleyKnight <valleyknight@protonmail.com>
-
+# Maintainer: sioodmy <a.sokolowski06@gmail.com>
 pkgname=todo-bin
 pkgver=2.0
 pkgrel=1
