@@ -255,7 +255,7 @@ pub fn help() {
 Todo is a super fast and simple tasks organizer written in rust
 Example: todo list
 Available commands:
-    -add [TASK/s] 
+    - add [TASK/s] 
         adds new task/s
         Example: todo add \"buy carrots\"
     - list
