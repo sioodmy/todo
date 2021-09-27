@@ -122,6 +122,42 @@ impl Todo {
     }
 
 
+    // Sorts done tasks
+    pub fn sort (&self) {
+        
+
+        // Creates a new empty string
+        let newtodo: String;
+
+        let mut todo = String::new(); 
+        let mut done = String::new(); 
+
+        for line in self.todo.iter() {
+            if line.len() > 5 {
+                if &line[..4] == "[ ] " {
+                    let line = format!("{}\n", line);
+                    todo.push_str(&line); 
+                } else if &line[..4] == "[*] " {
+
+                    let line = format!("{}\n", line);
+                    done.push_str(&line); 
+                }
+            }
+        }
+        
+        newtodo = format!("{}{}",&todo,&done);
+        // Opens the TODO file with a permission to:
+        let mut todofile = OpenOptions::new()
+            .write(true) // a) write
+            .truncate(true) // b) truncrate
+            .open("TODO")
+            .expect("Couldn't open the todo file");
+        
+        // Writes contents of a newtodo variable into the TODO file 
+        todofile.write_all(newtodo.as_bytes())
+            .expect("Error while trying to save the todofile");
+    }
+
     pub fn done (&self, args: &[String]) {
         
 
@@ -182,5 +218,8 @@ Available commands:
     - rm [INDEX] 
         removes a task
         Example: todo rm 4 
-");
+    - sort
+        sorts completed and uncompleted tasks
+        Example: todo sort 
+        ");
 }
