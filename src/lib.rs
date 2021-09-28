@@ -4,6 +4,9 @@ use std::fs::OpenOptions;
 use std::process;
 use colored::*;
 
+// name of the file, in which the list will be stored
+const NAME_OF_LIST_FILE:&str = ".todo";
+
 pub struct Todo {
     pub todo: Vec<String>,
 }
@@ -15,7 +18,7 @@ impl Todo {
             .write(true)
             .read(true)
             .create(true)
-            .open("TODO")
+            .open(NAME_OF_LIST_FILE)
             .expect("Couldn't open the todofile");
 
         // Creates a new buf reader
@@ -117,7 +120,7 @@ impl Todo {
         let mut todofile = OpenOptions::new()
             .create(true) // a) create the file if it does not exist 
             .append(true) // b) append a line to it
-            .open("TODO")
+            .open(NAME_OF_LIST_FILE)
             .expect("Couldn't open the todofile");
 
         let mut newtodo = String::new();
@@ -157,7 +160,7 @@ impl Todo {
         let mut todofile = OpenOptions::new()
             .write(true) // a) write
             .truncate(true) // b) truncrate
-            .open("TODO")
+            .open(NAME_OF_LIST_FILE)
             .expect("Couldn't open the todo file");
         
         // Writes contents of a newtodo variable into the TODO file 
@@ -195,7 +198,7 @@ impl Todo {
         let mut todofile = OpenOptions::new()
             .write(true) // a) write
             .truncate(true) // b) truncrate
-            .open("TODO")
+            .open(NAME_OF_LIST_FILE)
             .expect("Couldn't open the todo file");
         
         // Writes contents of a newtodo variable into the TODO file 
@@ -237,7 +240,7 @@ impl Todo {
         // Opens the TODO file with a permission to overwrite it
         let mut f = OpenOptions::new()
             .write(true) 
-            .open("TODO")
+            .open(NAME_OF_LIST_FILE)
             .expect("Couldn't open the todofile");
         
         // Writes contents of a newtodo variable into the TODO file 
@@ -252,7 +255,8 @@ impl Todo {
 pub fn help() {
     println!(
 "Usage: todo [COMMAND] [ARGUMENTS]
-Todo is a super fast and simple tasks organizer written in rust
+Todo is a super fast and simple tasks organizer written in rust.
+The list will be saved in a .todo file on at the current path.
 Example: todo list
 Available commands:
     - add [TASK/s] 
