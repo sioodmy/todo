@@ -1,4 +1,4 @@
-use std::io::{BufReader, Write};
+use std::io::{BufReader, BufWriter, Write};
 use std::io::prelude::*;
 use std::fs::OpenOptions;
 use std::process;
@@ -114,21 +114,22 @@ impl Todo {
             process::exit(1);
         } else {
         // Opens the TODO file with a permission to:
-        let mut todofile = OpenOptions::new()
+        let todofile = OpenOptions::new()
             .create(true) // a) create the file if it does not exist 
             .append(true) // b) append a line to it
             .open("TODO")
             .expect("Couldn't open the todofile");
 
-        let mut newtodo = String::new();
-        
+        let mut buffer = BufWriter::new(todofile); 
         for arg in args {
+            if arg.trim().len() < 1 {
+                continue;
+            }
             let line = format!("[ ] {}\n", arg);
-            newtodo.push_str(&line);
+            buffer.write_all(line.as_bytes()).expect("unable to write data");
         }
         
         // Appends a new task/s to the file
-        writeln!(todofile,"{}", newtodo).unwrap();
         }
     }
 
