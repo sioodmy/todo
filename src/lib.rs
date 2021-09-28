@@ -140,31 +140,27 @@ impl Todo {
             eprintln!("todo rm takes at least 1 argument");
             process::exit(1);
         } else {
-        // Creates a new empty string
-        let mut newtodo = String::new();
-
-   
         
+        // Opens the TODO file with a permission to:
+        let todofile = OpenOptions::new()
+            .write(true) // a) write
+            .truncate(true) // b) truncrate
+            .open("TODO")
+            .expect("Couldn't open the todo file");
+       
+
+        let mut buffer = BufWriter::new(todofile); 
+
         for (pos, line) in self.todo.iter().enumerate() {
             if args.contains(&(pos+1).to_string()) {
                 continue;
             }
            
             let line = format!("{}\n", line);
-            newtodo.push_str(&line[..]);
+
+            buffer.write_all(line.as_bytes()).expect("unable to write data");
         }
-        
-        // Opens the TODO file with a permission to:
-        let mut todofile = OpenOptions::new()
-            .write(true) // a) write
-            .truncate(true) // b) truncrate
-            .open("TODO")
-            .expect("Couldn't open the todo file");
-        
-        // Writes contents of a newtodo variable into the TODO file 
-        todofile.write_all(newtodo.as_bytes())
-            .expect("Error while trying to save the todofile");
-            }
+        }
     }
 
 
@@ -210,9 +206,13 @@ impl Todo {
             eprintln!("todo done takes at least 1 argument");
             process::exit(1);
         } else {
-        // Creates a new empty string
-        let mut newtodo = String::new();
 
+        // Opens the TODO file with a permission to overwrite it
+        let todofile = OpenOptions::new()
+            .write(true) 
+            .open("TODO")
+            .expect("Couldn't open the todofile");
+        let mut buffer = BufWriter::new(todofile); 
    
         for (pos, line) in self.todo.iter().enumerate() {
             if line.len() > 5 {
@@ -220,30 +220,21 @@ impl Todo {
 
                     if &line[..4] == "[ ] "{
                         let line = format!("[*] {}\n", &line[4..]);
-                        newtodo.push_str(&line[..]);
+                        buffer.write_all(line.as_bytes()).expect("unable to write data");
                     } else if &line[..4] == "[*] " {
                         let line = format!("[ ] {}\n", &line[4..]);
-                        newtodo.push_str(&line[..]);
+                        buffer.write_all(line.as_bytes()).expect("unable to write data");
                     }
         
                 } else {
                     if &line[..4] == "[ ] " || &line[..4] == "[*] " {
                         let line = format!("{}\n", line);
-                        newtodo.push_str(&line[..]);
+                        buffer.write_all(line.as_bytes()).expect("unable to write data");
                     }
                 } 
             }
         }
         
-        // Opens the TODO file with a permission to overwrite it
-        let mut f = OpenOptions::new()
-            .write(true) 
-            .open("TODO")
-            .expect("Couldn't open the todofile");
-        
-        // Writes contents of a newtodo variable into the TODO file 
-        f.write_all(newtodo.as_bytes()).expect("Error while trying to save the todofile");
-//        write!(&self.todofile, "{}", newtodo).unwrap();
         }
     }
 
