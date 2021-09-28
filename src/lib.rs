@@ -103,11 +103,15 @@ impl Todo {
             eprintln!("todo add takes at least 1 argument");
             process::exit(1);
         } else {
+            let home = env::var_os("HOME").unwrap();
+            let todo = path::Path::new("TODO");
+            let home = home.to_str().unwrap();
+    
             // Opens the TODO file with a permission to:
             let todofile = OpenOptions::new()
                 .create(true) // a) create the file if it does not exist
                 .append(true) // b) append a line to it
-                .open("TODO")
+                .open(path::Path::new(&home).join(todo))
                 .expect("Couldn't open the todofile");
 
             let mut buffer = BufWriter::new(todofile);
@@ -132,11 +136,15 @@ impl Todo {
             eprintln!("todo rm takes at least 1 argument");
             process::exit(1);
         } else {
+            let home = env::var_os("HOME").unwrap();
+            let todo = path::Path::new("TODO");
+            let home = home.to_str().unwrap();
+
             // Opens the TODO file with a permission to:
             let todofile = OpenOptions::new()
                 .write(true) // a) write
                 .truncate(true) // b) truncrate
-                .open("TODO")
+                .open(path::Path::new(&home).join(todo))
                 .expect("Couldn't open the todo file");
 
             let mut buffer = BufWriter::new(todofile);
