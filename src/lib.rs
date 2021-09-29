@@ -11,17 +11,21 @@ pub struct Todo {
 impl Todo {
     pub fn new() -> Result<Self, String> {
         // Instead of creating the TODO file in the current directory,
-        // maybe create it in `$HOME/TODO`?
-        let home = env::var_os("HOME").unwrap();
+        // maybe create it in `$XDG_DATA_HOME/TODO`?
+        let mut home = env::var_os("XDG_DATA_HOME").unwrap_or(env::var_os("HOME").unwrap());
+
+        if cfg!(windows) {
+            home = env::var_os("USERPROFILE").unwrap();
+        }
+
         let todo = path::Path::new("TODO");
-        // Variable shadowing
-        let home = home.to_str().unwrap();
+        let home_path = home.to_str().unwrap();
 
         let todofile = OpenOptions::new()
             .write(true)
             .read(true)
             .create(true)
-            .open(path::Path::new(&home).join(todo))
+            .open(path::Path::new(&home_path).join(todo))
             .expect("Couldn't open the todofile");
 
         // Creates a new buf reader
@@ -103,15 +107,20 @@ impl Todo {
             eprintln!("todo add takes at least 1 argument");
             process::exit(1);
         } else {
-            let home = env::var_os("HOME").unwrap();
+            let mut home = env::var_os("XDG_DATA_HOME").unwrap_or(env::var_os("HOME").unwrap());
+
+            if cfg!(windows) {
+                home = env::var_os("USERPROFILE").unwrap();
+            }
+    
             let todo = path::Path::new("TODO");
-            let home = home.to_str().unwrap();
+            let home_path = home.to_str().unwrap();
     
             // Opens the TODO file with a permission to:
             let todofile = OpenOptions::new()
                 .create(true) // a) create the file if it does not exist
                 .append(true) // b) append a line to it
-                .open(path::Path::new(&home).join(todo))
+                .open(path::Path::new(&home_path).join(todo))
                 .expect("Couldn't open the todofile");
 
             let mut buffer = BufWriter::new(todofile);
@@ -136,15 +145,20 @@ impl Todo {
             eprintln!("todo rm takes at least 1 argument");
             process::exit(1);
         } else {
-            let home = env::var_os("HOME").unwrap();
+            let mut home = env::var_os("XDG_DATA_HOME").unwrap_or(env::var_os("HOME").unwrap());
+
+            if cfg!(windows) {
+                home = env::var_os("USERPROFILE").unwrap();
+            }
+    
             let todo = path::Path::new("TODO");
-            let home = home.to_str().unwrap();
+            let home_path = home.to_str().unwrap();
 
             // Opens the TODO file with a permission to:
             let todofile = OpenOptions::new()
                 .write(true) // a) write
                 .truncate(true) // b) truncrate
-                .open(path::Path::new(&home).join(todo))
+                .open(path::Path::new(&home_path).join(todo))
                 .expect("Couldn't open the todo file");
 
             let mut buffer = BufWriter::new(todofile);
