@@ -2,10 +2,10 @@ use colored::*;
 use std::fs::OpenOptions;
 use std::io::prelude::Read;
 use std::io::{BufReader, BufWriter, Write};
-use std::{process, env, path};
+use std::{env, path, process};
 
 pub struct Todo {
-    pub todo: Vec<String>
+    pub todo: Vec<String>,
 }
 
 impl Todo {
@@ -112,10 +112,10 @@ impl Todo {
             if cfg!(windows) {
                 home = env::var_os("USERPROFILE").unwrap();
             }
-    
+
             let todo = path::Path::new("TODO");
             let home_path = home.to_str().unwrap();
-    
+
             // Opens the TODO file with a permission to:
             let todofile = OpenOptions::new()
                 .create(true) // a) create the file if it does not exist
@@ -150,7 +150,7 @@ impl Todo {
             if cfg!(windows) {
                 home = env::var_os("USERPROFILE").unwrap();
             }
-    
+
             let todo = path::Path::new("TODO");
             let home_path = home.to_str().unwrap();
 
@@ -164,6 +164,9 @@ impl Todo {
             let mut buffer = BufWriter::new(todofile);
 
             for (pos, line) in self.todo.iter().enumerate() {
+                if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
+                    continue;
+                }
                 if args.contains(&(pos + 1).to_string()) {
                     continue;
                 }
