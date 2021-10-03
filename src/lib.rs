@@ -20,7 +20,7 @@ impl Todo {
             // for more info.
             // Also on MacOS, `XDG_DATA_HOME` "should" exists.
             // If not, fallback to `HOME`, like Linux.
-            "linux" | "macos" => {
+            "linux" | "macos" | "freebsd" | "netbsd" | "openbsd" => {
                 env::var_os("XDG_DATA_HOME")
                     .unwrap_or(env::var_os("HOME").unwrap())
                     .into_string()
