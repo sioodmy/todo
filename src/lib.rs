@@ -13,17 +13,34 @@ impl Todo {
     pub fn new() -> Result<Self, String> {
         // Instead of creating the TODO file in the current directory,
         // maybe create it in `$XDG_DATA_HOME/TODO`?
-        let home: String = match env::consts::OS{
-            "linux" => {
-                env::var_os("XDG_DATA_HOME").unwrap_or(env::var_os("HOME").unwrap()).into_string().unwrap()
+        let home: String = match env::consts::OS {
+
+            // On MacOS, `std::env::consts::OS` should return `macos`.
+            // See https://doc.rust-lang.org/std/env/consts/constant.OS.html
+            // for more info.
+            // Also on MacOS, `XDG_DATA_HOME` "should" exists.
+            // If not, fallback to `HOME`, like Linux.
+            "linux" | "macos" => {
+                env::var_os("XDG_DATA_HOME")
+                    .unwrap_or(env::var_os("HOME").unwrap())
+                    .into_string()
+                    .unwrap()
             },
 
             "windows" => {
-                env::var_os("USERPROFILE").unwrap().into_string().unwrap()
+                env::var_os("USERPROFILE")
+                    .unwrap()
+                    .into_string()
+                    .unwrap()
             },
 
+            // Should probably try to atleast get the `HOME`
+            // environment variable.
+            // If it doesn't exists, use `panic!(...)`
             _ => { panic!() },
         };
+
+        // Saving `path::Path::new(&home).join(todo)` to variable should also be considered
 
         let todo = path::Path::new("TODO");
 
