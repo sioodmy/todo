@@ -4,7 +4,7 @@ use std::fs::OpenOptions;
 use std::io::prelude::Read;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::PathBuf;
-use std::{path, process};
+use std::process;
 
 pub struct Todo {
     pub todo: Vec<String>,
@@ -45,7 +45,7 @@ impl Todo {
     }
 
     // Prints every todo saved
-    pub fn list(&self) -> () {
+    pub fn list(&self) {
         // This loop will repeat itself for each taks in TODO file
         for (number, task) in self.todo.iter().enumerate() {
             if task.len() > 5 {
@@ -75,7 +75,7 @@ impl Todo {
     pub fn raw(&self, arg: &[String]) {
         if arg.len() > 1 {
             eprintln!("todo raw takes only 1 argument, not {}", arg.len())
-        } else if arg.len() < 1 {
+        } else if arg.is_empty() {
             eprintln!("todo raw takes 1 argument (done/todo)");
         } else {
             // This loop will repeat itself for each taks in TODO file
@@ -103,43 +103,37 @@ impl Todo {
     }
     // Adds a new todo
     pub fn add(&self, args: &[String]) {
-        if args.len() < 1 {
+        if args.is_empty() {
             eprintln!("todo add takes at least 1 argument");
             process::exit(1);
-        } else {
-            let todo = path::Path::new("TODO");
+        }
+        // Opens the TODO file with a permission to:
+        let todofile = OpenOptions::new()
+            .create(true) // a) create the file if it does not exist
+            .append(true) // b) append a line to it
+            .open(self.todo_path.clone())
+            .expect("Couldn't open the todofile");
 
-            // Opens the TODO file with a permission to:
-            let todofile = OpenOptions::new()
-                .create(true) // a) create the file if it does not exist
-                .append(true) // b) append a line to it
-                .open(self.todo_path.clone())
-                .expect("Couldn't open the todofile");
-
-            let mut buffer = BufWriter::new(todofile);
-            for arg in args {
-                if arg.trim().len() < 1 {
-                    continue;
-                }
-
-                let line = format!("[ ] {}\n", arg);
-                buffer
-                    .write_all(line.as_bytes())
-                    .expect("unable to write data");
+        let mut buffer = BufWriter::new(todofile);
+        for arg in args {
+            if arg.trim().is_empty() {
+                continue;
             }
 
             // Appends a new task/s to the file
+            let line = format!("[ ] {}\n", arg);
+            buffer
+                .write_all(line.as_bytes())
+                .expect("unable to write data");
         }
     }
 
     // Removes a task
     pub fn remove(&self, args: &[String]) {
-        if args.len() < 1 {
+        if args.is_empty() {
             eprintln!("todo rm takes at least 1 argument");
             process::exit(1);
         } else {
-            let todo = path::Path::new("TODO");
-
             // Opens the TODO file with a permission to:
             let todofile = OpenOptions::new()
                 .write(true) // a) write
@@ -201,7 +195,7 @@ impl Todo {
     }
 
     pub fn done(&self, args: &[String]) {
-        if args.len() < 1 {
+        if args.is_empty() {
             eprintln!("todo done takes at least 1 argument");
             process::exit(1);
         }
@@ -227,13 +221,11 @@ impl Todo {
                             .write_all(line.as_bytes())
                             .expect("unable to write data");
                     }
-                } else {
-                    if &line[..4] == "[ ] " || &line[..4] == "[*] " {
-                        let line = format!("{}\n", line);
-                        buffer
-                            .write_all(line.as_bytes())
-                            .expect("unable to write data");
-                    }
+                } else if &line[..4] == "[ ] " || &line[..4] == "[*] " {
+                    let line = format!("{}\n", line);
+                    buffer
+                        .write_all(line.as_bytes())
+                        .expect("unable to write data");
                 }
             }
         }
