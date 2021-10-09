@@ -1,5 +1,5 @@
 use colored::*;
-use directories::UserDirs;
+use directories::BaseDirs;
 use std::fs::OpenOptions;
 use std::io::prelude::Read;
 use std::io::{BufReader, BufWriter, Write};
@@ -13,7 +13,7 @@ pub struct Todo {
 
 impl Todo {
     pub fn new() -> Result<Self, String> {
-        let user_dirs = UserDirs::new();
+        let user_dirs = BaseDirs::new();
         let home = user_dirs
             .expect("Home directory could not be found")
             .home_dir()
