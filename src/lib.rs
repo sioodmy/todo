@@ -8,7 +8,7 @@ use std::{path, process};
 
 pub struct Todo {
     pub todo: Vec<String>,
-    pub home: PathBuf,
+    pub todo_path: PathBuf,
 }
 
 impl Todo {
@@ -19,13 +19,13 @@ impl Todo {
             .home_dir()
             .to_path_buf();
 
-        let todo = home.join("TODO");
+        let todo_path = home.join("TODO");
 
         let todofile = OpenOptions::new()
             .write(true)
             .read(true)
             .create(true)
-            .open(path::Path::new(&home).join(todo))
+            .open(todo_path.clone())
             .expect("Couldn't open the todofile");
 
         // Creates a new buf reader
@@ -41,7 +41,7 @@ impl Todo {
         let todo = contents.to_string().lines().map(str::to_string).collect();
 
         // Returns todo
-        Ok(Self { todo, home })
+        Ok(Self { todo, todo_path })
     }
 
     // Prints every todo saved
@@ -113,7 +113,7 @@ impl Todo {
             let todofile = OpenOptions::new()
                 .create(true) // a) create the file if it does not exist
                 .append(true) // b) append a line to it
-                .open(path::Path::new(&self.home).join(todo))
+                .open(self.todo_path.clone())
                 .expect("Couldn't open the todofile");
 
             let mut buffer = BufWriter::new(todofile);
@@ -144,7 +144,7 @@ impl Todo {
             let todofile = OpenOptions::new()
                 .write(true) // a) write
                 .truncate(true) // b) truncrate
-                .open(path::Path::new(&self.home).join(todo))
+                .open(self.todo_path.clone())
                 .expect("Couldn't open the todo file");
 
             let mut buffer = BufWriter::new(todofile);
@@ -191,7 +191,7 @@ impl Todo {
         let mut todofile = OpenOptions::new()
             .write(true) // a) write
             .truncate(true) // b) truncrate
-            .open("TODO")
+            .open(self.todo_path.clone())
             .expect("Couldn't open the todo file");
 
         // Writes contents of a newtodo variable into the TODO file
@@ -204,35 +204,35 @@ impl Todo {
         if args.len() < 1 {
             eprintln!("todo done takes at least 1 argument");
             process::exit(1);
-        } else {
-            // Opens the TODO file with a permission to overwrite it
-            let todofile = OpenOptions::new()
-                .write(true)
-                .open("TODO")
-                .expect("Couldn't open the todofile");
-            let mut buffer = BufWriter::new(todofile);
+        }
 
-            for (pos, line) in self.todo.iter().enumerate() {
-                if line.len() > 5 {
-                    if args.contains(&(pos + 1).to_string()) {
-                        if &line[..4] == "[ ] " {
-                            let line = format!("[*] {}\n", &line[4..]);
-                            buffer
-                                .write_all(line.as_bytes())
-                                .expect("unable to write data");
-                        } else if &line[..4] == "[*] " {
-                            let line = format!("[ ] {}\n", &line[4..]);
-                            buffer
-                                .write_all(line.as_bytes())
-                                .expect("unable to write data");
-                        }
-                    } else {
-                        if &line[..4] == "[ ] " || &line[..4] == "[*] " {
-                            let line = format!("{}\n", line);
-                            buffer
-                                .write_all(line.as_bytes())
-                                .expect("unable to write data");
-                        }
+        // Opens the TODO file with a permission to overwrite it
+        let todofile = OpenOptions::new()
+            .write(true)
+            .open(self.todo_path.clone())
+            .expect("Couldn't open the todofile");
+        let mut buffer = BufWriter::new(todofile);
+
+        for (pos, line) in self.todo.iter().enumerate() {
+            if line.len() > 5 {
+                if args.contains(&(pos + 1).to_string()) {
+                    if &line[..4] == "[ ] " {
+                        let line = format!("[*] {}\n", &line[4..]);
+                        buffer
+                            .write_all(line.as_bytes())
+                            .expect("unable to write data");
+                    } else if &line[..4] == "[*] " {
+                        let line = format!("[ ] {}\n", &line[4..]);
+                        buffer
+                            .write_all(line.as_bytes())
+                            .expect("unable to write data");
+                    }
+                } else {
+                    if &line[..4] == "[ ] " || &line[..4] == "[*] " {
+                        let line = format!("{}\n", line);
+                        buffer
+                            .write_all(line.as_bytes())
+                            .expect("unable to write data");
                     }
                 }
             }
