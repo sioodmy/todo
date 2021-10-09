@@ -133,30 +133,29 @@ impl Todo {
         if args.is_empty() {
             eprintln!("todo rm takes at least 1 argument");
             process::exit(1);
-        } else {
-            // Opens the TODO file with a permission to:
-            let todofile = OpenOptions::new()
-                .write(true) // a) write
-                .truncate(true) // b) truncrate
-                .open(self.todo_path.clone())
-                .expect("Couldn't open the todo file");
+        }
+        // Opens the TODO file with a permission to:
+        let todofile = OpenOptions::new()
+            .write(true) // a) write
+            .truncate(true) // b) truncrate
+            .open(self.todo_path.clone())
+            .expect("Couldn't open the todo file");
 
-            let mut buffer = BufWriter::new(todofile);
+        let mut buffer = BufWriter::new(todofile);
 
-            for (pos, line) in self.todo.iter().enumerate() {
-                if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
-                    continue;
-                }
-                if args.contains(&(pos + 1).to_string()) {
-                    continue;
-                }
-
-                let line = format!("{}\n", line);
-
-                buffer
-                    .write_all(line.as_bytes())
-                    .expect("unable to write data");
+        for (pos, line) in self.todo.iter().enumerate() {
+            if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
+                continue;
             }
+            if args.contains(&(pos + 1).to_string()) {
+                continue;
+            }
+
+            let line = format!("{}\n", line);
+
+            buffer
+                .write_all(line.as_bytes())
+                .expect("unable to write data");
         }
     }
 
