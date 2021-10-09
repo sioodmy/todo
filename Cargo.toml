@@ -8,3 +8,4 @@ description = "Simple todo cli program written in rust"
 
 [dependencies]
 colored = "2"
+directories = "4.0"
