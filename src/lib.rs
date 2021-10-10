@@ -1,54 +1,31 @@
 use colored::*;
+use directories::BaseDirs;
 use std::fs::OpenOptions;
 use std::io::prelude::Read;
 use std::io::{BufReader, BufWriter, Write};
-use std::{env, path, process};
+use std::path::PathBuf;
+use std::process;
 
 pub struct Todo {
     pub todo: Vec<String>,
-    pub home: String,
+    pub todo_path: PathBuf,
 }
 
 impl Todo {
     pub fn new() -> Result<Self, String> {
-        // Instead of creating the TODO file in the current directory,
-        // maybe create it in `$XDG_DATA_HOME/TODO`?
-        let home: String = match env::consts::OS {
+        let user_dirs = BaseDirs::new();
+        let home = user_dirs
+            .expect("Home directory could not be found")
+            .home_dir()
+            .to_path_buf();
 
-            // On MacOS, `std::env::consts::OS` should return `macos`.
-            // See https://doc.rust-lang.org/std/env/consts/constant.OS.html
-            // for more info.
-            // Also on MacOS, `XDG_DATA_HOME` "should" exists.
-            // If not, fallback to `HOME`, like Linux.
-            "linux" | "macos" => {
-                env::var_os("XDG_DATA_HOME")
-                    .unwrap_or(env::var_os("HOME").unwrap())
-                    .into_string()
-                    .unwrap()
-            },
-
-            "windows" => {
-                env::var_os("USERPROFILE")
-                    .unwrap()
-                    .into_string()
-                    .unwrap()
-            },
-
-            // Should probably try to atleast get the `HOME`
-            // environment variable.
-            // If it doesn't exists, use `panic!(...)`
-            _ => { panic!() },
-        };
-
-        // Saving `path::Path::new(&home).join(todo)` to variable should also be considered
-
-        let todo = path::Path::new("TODO");
+        let todo_path = home.join("TODO");
 
         let todofile = OpenOptions::new()
             .write(true)
             .read(true)
             .create(true)
-            .open(path::Path::new(&home).join(todo))
+            .open(todo_path.clone())
             .expect("Couldn't open the todofile");
 
         // Creates a new buf reader
@@ -64,11 +41,11 @@ impl Todo {
         let todo = contents.to_string().lines().map(str::to_string).collect();
 
         // Returns todo
-        Ok(Self { todo, home })
+        Ok(Self { todo, todo_path })
     }
 
     // Prints every todo saved
-    pub fn list(&self) -> () {
+    pub fn list(&self) {
         // This loop will repeat itself for each taks in TODO file
         for (number, task) in self.todo.iter().enumerate() {
             if task.len() > 5 {
@@ -98,7 +75,7 @@ impl Todo {
     pub fn raw(&self, arg: &[String]) {
         if arg.len() > 1 {
             eprintln!("todo raw takes only 1 argument, not {}", arg.len())
-        } else if arg.len() < 1 {
+        } else if arg.is_empty() {
             eprintln!("todo raw takes 1 argument (done/todo)");
         } else {
             // This loop will repeat itself for each taks in TODO file
@@ -126,66 +103,59 @@ impl Todo {
     }
     // Adds a new todo
     pub fn add(&self, args: &[String]) {
-        if args.len() < 1 {
+        if args.is_empty() {
             eprintln!("todo add takes at least 1 argument");
             process::exit(1);
-        } else {
-            let todo = path::Path::new("TODO");
+        }
+        // Opens the TODO file with a permission to:
+        let todofile = OpenOptions::new()
+            .create(true) // a) create the file if it does not exist
+            .append(true) // b) append a line to it
+            .open(self.todo_path.clone())
+            .expect("Couldn't open the todofile");
 
-            // Opens the TODO file with a permission to:
-            let todofile = OpenOptions::new()
-                .create(true) // a) create the file if it does not exist
-                .append(true) // b) append a line to it
-                .open(path::Path::new(&self.home).join(todo))
-                .expect("Couldn't open the todofile");
-
-            let mut buffer = BufWriter::new(todofile);
-            for arg in args {
-                if arg.trim().len() < 1 {
-                    continue;
-                }
-
-                let line = format!("[ ] {}\n", arg);
-                buffer
-                    .write_all(line.as_bytes())
-                    .expect("unable to write data");
+        let mut buffer = BufWriter::new(todofile);
+        for arg in args {
+            if arg.trim().is_empty() {
+                continue;
             }
 
             // Appends a new task/s to the file
+            let line = format!("[ ] {}\n", arg);
+            buffer
+                .write_all(line.as_bytes())
+                .expect("unable to write data");
         }
     }
 
     // Removes a task
     pub fn remove(&self, args: &[String]) {
-        if args.len() < 1 {
+        if args.is_empty() {
             eprintln!("todo rm takes at least 1 argument");
             process::exit(1);
-        } else {
-            let todo = path::Path::new("TODO");
+        }
+        // Opens the TODO file with a permission to:
+        let todofile = OpenOptions::new()
+            .write(true) // a) write
+            .truncate(true) // b) truncrate
+            .open(self.todo_path.clone())
+            .expect("Couldn't open the todo file");
 
-            // Opens the TODO file with a permission to:
-            let todofile = OpenOptions::new()
-                .write(true) // a) write
-                .truncate(true) // b) truncrate
-                .open(path::Path::new(&self.home).join(todo))
-                .expect("Couldn't open the todo file");
+        let mut buffer = BufWriter::new(todofile);
 
-            let mut buffer = BufWriter::new(todofile);
-
-            for (pos, line) in self.todo.iter().enumerate() {
-                if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
-                    continue;
-                }
-                if args.contains(&(pos + 1).to_string()) {
-                    continue;
-                }
-
-                let line = format!("{}\n", line);
-
-                buffer
-                    .write_all(line.as_bytes())
-                    .expect("unable to write data");
+        for (pos, line) in self.todo.iter().enumerate() {
+            if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
+                continue;
             }
+            if args.contains(&(pos + 1).to_string()) {
+                continue;
+            }
+
+            let line = format!("{}\n", line);
+
+            buffer
+                .write_all(line.as_bytes())
+                .expect("unable to write data");
         }
     }
 
@@ -214,7 +184,7 @@ impl Todo {
         let mut todofile = OpenOptions::new()
             .write(true) // a) write
             .truncate(true) // b) truncrate
-            .open("TODO")
+            .open(self.todo_path.clone())
             .expect("Couldn't open the todo file");
 
         // Writes contents of a newtodo variable into the TODO file
@@ -224,39 +194,37 @@ impl Todo {
     }
 
     pub fn done(&self, args: &[String]) {
-        if args.len() < 1 {
+        if args.is_empty() {
             eprintln!("todo done takes at least 1 argument");
             process::exit(1);
-        } else {
-            // Opens the TODO file with a permission to overwrite it
-            let todofile = OpenOptions::new()
-                .write(true)
-                .open("TODO")
-                .expect("Couldn't open the todofile");
-            let mut buffer = BufWriter::new(todofile);
+        }
 
-            for (pos, line) in self.todo.iter().enumerate() {
-                if line.len() > 5 {
-                    if args.contains(&(pos + 1).to_string()) {
-                        if &line[..4] == "[ ] " {
-                            let line = format!("[*] {}\n", &line[4..]);
-                            buffer
-                                .write_all(line.as_bytes())
-                                .expect("unable to write data");
-                        } else if &line[..4] == "[*] " {
-                            let line = format!("[ ] {}\n", &line[4..]);
-                            buffer
-                                .write_all(line.as_bytes())
-                                .expect("unable to write data");
-                        }
-                    } else {
-                        if &line[..4] == "[ ] " || &line[..4] == "[*] " {
-                            let line = format!("{}\n", line);
-                            buffer
-                                .write_all(line.as_bytes())
-                                .expect("unable to write data");
-                        }
+        // Opens the TODO file with a permission to overwrite it
+        let todofile = OpenOptions::new()
+            .write(true)
+            .open(self.todo_path.clone())
+            .expect("Couldn't open the todofile");
+        let mut buffer = BufWriter::new(todofile);
+
+        for (pos, line) in self.todo.iter().enumerate() {
+            if line.len() > 5 {
+                if args.contains(&(pos + 1).to_string()) {
+                    if &line[..4] == "[ ] " {
+                        let line = format!("[*] {}\n", &line[4..]);
+                        buffer
+                            .write_all(line.as_bytes())
+                            .expect("unable to write data");
+                    } else if &line[..4] == "[*] " {
+                        let line = format!("[ ] {}\n", &line[4..]);
+                        buffer
+                            .write_all(line.as_bytes())
+                            .expect("unable to write data");
                     }
+                } else if &line[..4] == "[ ] " || &line[..4] == "[*] " {
+                    let line = format!("{}\n", line);
+                    buffer
+                        .write_all(line.as_bytes())
+                        .expect("unable to write data");
                 }
             }
         }

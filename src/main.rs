@@ -1,5 +1,5 @@
 use std::env;
-use todo_bin::{Todo, help};
+use todo_bin::{help, Todo};
 
 fn main() {
     let todo = Todo::new().expect("Couldn't create the todo instance");
