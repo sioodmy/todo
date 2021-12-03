@@ -2,19 +2,34 @@ use colored::*;
 use std::fs::OpenOptions;
 use std::io::prelude::Read;
 use std::io::{BufReader, BufWriter, Write};
-use std::process;
+use std::path::Path;
+use std::{env, process};
 
 pub struct Todo {
     pub todo: Vec<String>,
+    pub todo_path: String,
 }
 
 impl Todo {
     pub fn new() -> Result<Self, String> {
+        let todo_path: String = match env::var("TODO_PATH") {
+            Ok(t) => t,
+            Err(_) => {
+                let home = env::var("HOME").unwrap();
+
+                // Look for a legacy TODO file path
+                let legacy_todo = format!("{}/TODO", &home);
+                match Path::new(&legacy_todo).exists() {
+                    true => legacy_todo,
+                    false => format!("{}/.todo", &home),
+                }
+            }
+        };
         let todofile = OpenOptions::new()
             .write(true)
             .read(true)
             .create(true)
-            .open("TODO")
+            .open(&todo_path)
             .expect("Couldn't open the todofile");
 
         // Creates a new buf reader
@@ -30,7 +45,7 @@ impl Todo {
         let todo = contents.to_string().lines().map(str::to_string).collect();
 
         // Returns todo
-        Ok(Self { todo })
+        Ok(Self { todo, todo_path })
     }
 
     // Prints every todo saved
@@ -100,7 +115,7 @@ impl Todo {
         let todofile = OpenOptions::new()
             .create(true) // a) create the file if it does not exist
             .append(true) // b) append a line to it
-            .open("TODO")
+            .open(&self.todo_path)
             .expect("Couldn't open the todofile");
 
         let mut buffer = BufWriter::new(todofile);
@@ -127,7 +142,7 @@ impl Todo {
         let todofile = OpenOptions::new()
             .write(true) // a) write
             .truncate(true) // b) truncrate
-            .open("TODO")
+            .open(&self.todo_path)
             .expect("Couldn't open the todo file");
 
         let mut buffer = BufWriter::new(todofile);
@@ -173,7 +188,7 @@ impl Todo {
         let mut todofile = OpenOptions::new()
             .write(true) // a) write
             .truncate(true) // b) truncrate
-            .open("TODO")
+            .open(&self.todo_path)
             .expect("Couldn't open the todo file");
 
         // Writes contents of a newtodo variable into the TODO file
@@ -191,7 +206,7 @@ impl Todo {
         // Opens the TODO file with a permission to overwrite it
         let todofile = OpenOptions::new()
             .write(true)
-            .open("TODO")
+            .open(&self.todo_path)
             .expect("Couldn't open the todofile");
         let mut buffer = BufWriter::new(todofile);
 
@@ -243,7 +258,6 @@ Available commands:
         prints nothing but done/incompleted tasks in plain text, useful for scripting
         Example: todo raw done
 ";
-
 pub fn help() {
     // For readability
     println!("{}", TODO_HELP);
