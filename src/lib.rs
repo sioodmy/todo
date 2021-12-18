@@ -233,6 +233,21 @@ impl Todo {
             }
         }
     }
+    pub fn reset (self) {
+        // Resets the entiere todo list, ie remove all enteries
+        let todofile = OpenOptions::new()
+            .write(true)
+            .read(true)
+            .truncate(true)
+            .open(&self.todo_path)
+            .expect("Couldn't open the todofile");
+
+        let mut buffer = BufWriter::new(todofile);
+
+        buffer
+            .write("".as_bytes())
+            .expect("unable to reset the todo list");
+    }
 }
 
 const TODO_HELP: &str = "Usage: todo [COMMAND] [ARGUMENTS]
