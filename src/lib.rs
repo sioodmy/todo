@@ -266,6 +266,8 @@ Available commands:
     - rm [INDEX] 
         removes a task
         Example: todo rm 4 
+    - reset 
+        deletes all tasks
     - sort
         sorts completed and uncompleted tasks
         Example: todo sort 
