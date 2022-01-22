@@ -50,7 +50,7 @@ impl Todo {
 
     // Prints every todo saved
     pub fn list(&self) {
-        // This loop will repeat itself for each taks in TODO file
+        // This loop will repeat itself for each task in TODO file
         for (number, task) in self.todo.iter().enumerate() {
             if task.len() > 5 {
                 // Converts virgin default number into a chad BOLD string
@@ -82,7 +82,7 @@ impl Todo {
         } else if arg.is_empty() {
             eprintln!("todo raw takes 1 argument (done/todo)");
         } else {
-            // This loop will repeat itself for each taks in TODO file
+            // This loop will repeat itself for each task in TODO file
             for task in self.todo.iter() {
                 if task.len() > 5 {
                     // Saves the symbol of current task
@@ -254,7 +254,7 @@ const TODO_HELP: &str = "Usage: todo [COMMAND] [ARGUMENTS]
 Todo is a super fast and simple tasks organizer written in rust
 Example: todo list
 Available commands:
-    - add [TASK/s] 
+    - add [TASK/s]
         adds new task/s
         Example: todo add \"buy carrots\"
     - list
@@ -263,14 +263,14 @@ Available commands:
     - done [INDEX]
         marks task as done
         Example: todo done 2 3 (marks second and third tasks as completed)
-    - rm [INDEX] 
+    - rm [INDEX]
         removes a task
-        Example: todo rm 4 
-    - reset 
+        Example: todo rm 4
+    - reset
         deletes all tasks
     - sort
         sorts completed and uncompleted tasks
-        Example: todo sort 
+        Example: todo sort
     - raw [todo/done]
         prints nothing but done/incompleted tasks in plain text, useful for scripting
         Example: todo raw done
