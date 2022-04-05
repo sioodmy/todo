@@ -25,8 +25,7 @@
 
         todo =
           naersk-lib.buildPackage {
-            pname = "todo-bin";
-#            nativeBuildInputs = with pkgs; [ pkg-config gtk3 ];
+            pname = "todo";
             root = ./.;
           };
 
@@ -40,4 +39,4 @@
 
         devShell = import ./shell.nix { inherit pkgs; };
       });
-}
+    }
