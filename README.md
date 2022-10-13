@@ -1,4 +1,5 @@
 # todo
+
 A lightweight and super fast cli todo program written in rust under 200 sloc
 
 ![gif](todo.gif)
@@ -11,13 +12,18 @@ A lightweight and super fast cli todo program written in rust under 200 sloc
 
 Add `todo.url = "github:sioodmy/todo";` to your inputs. And `inputs.todo.packages."x86_64-linux".todo` to `home.packages`
 
-### other distros 
+### other distros
+
 use `cargo build --release` to compile todo and copy `target/release/todo` to `/usr/bin`
+
 ## note
+
 todo is still really early in development so be careful or sth
 
-btw i know that my code is not the best but im still learing 
+btw i know that my code is not the best but im still learing
+
 ## usage
+
 ```Usage: todo [COMMAND] [ARGUMENTS]
 Todo is a super fast and simple tasks organizer written in rust
 Example: todo list
@@ -34,6 +40,10 @@ Available commands:
     - rm [INDEX]
         removes a task
         Example: todo rm 4
+    - reset
+        deletes all tasks
+    - restore
+        restore recent backup after reset
     - sort
         sorts completed and uncompleted tasks
         Example: todo sort
