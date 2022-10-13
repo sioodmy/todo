@@ -1,4 +1,5 @@
 use colored::*;
+use std::fs;
 use std::fs::OpenOptions;
 use std::io::prelude::Read;
 use std::io::{BufReader, BufWriter, Write};
@@ -8,6 +9,8 @@ use std::{env, process};
 pub struct Todo {
     pub todo: Vec<String>,
     pub todo_path: String,
+    pub todo_bak: String,
+    pub no_backup: bool,
 }
 
 impl Todo {
@@ -25,6 +28,14 @@ impl Todo {
                 }
             }
         };
+
+        let todo_bak: String = match env::var("TODO_BAK_DIR") {
+            Ok(t) => t,
+            Err(_) => String::from("/tmp/todo.bak"),
+        };
+
+        let no_backup = env::var("TODO_NOBACKUP").is_ok();
+
         let todofile = OpenOptions::new()
             .write(true)
             .read(true)
@@ -45,7 +56,12 @@ impl Todo {
         let todo = contents.to_string().lines().map(str::to_string).collect();
 
         // Returns todo
-        Ok(Self { todo, todo_path })
+        Ok(Self {
+            todo,
+            todo_path,
+            todo_bak,
+            no_backup,
+        })
     }
 
     // Prints every todo saved
@@ -163,6 +179,31 @@ impl Todo {
         }
     }
 
+    fn remove_file(&self) {
+        match fs::remove_file(&self.todo_path) {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("Error while clearing todo file: {}", e)
+            }
+        };
+    }
+    // Clear todo by removing todo file
+    pub fn reset(&self) {
+        if !self.no_backup {
+            match fs::copy(&self.todo_path, &self.todo_bak) {
+                Ok(_) => self.remove_file(),
+                Err(_) => {
+                    eprint!("Couldn't backup the todo file")
+                }
+            }
+        } else {
+            self.remove_file();
+        }
+    }
+    pub fn restore(&self) {
+        fs::copy(&self.todo_bak, &self.todo_path).expect("unable to restore the backup");
+    }
+
     // Sorts done tasks
     pub fn sort(&self) {
         // Creates a new empty string
@@ -233,21 +274,6 @@ impl Todo {
             }
         }
     }
-    pub fn reset (self) {
-        // Resets the entiere todo list, ie remove all enteries
-        let todofile = OpenOptions::new()
-            .write(true)
-            .read(true)
-            .truncate(true)
-            .open(&self.todo_path)
-            .expect("Couldn't open the todofile");
-
-        let mut buffer = BufWriter::new(todofile);
-
-        buffer
-            .write("".as_bytes())
-            .expect("unable to reset the todo list");
-    }
 }
 
 const TODO_HELP: &str = "Usage: todo [COMMAND] [ARGUMENTS]
@@ -268,6 +294,8 @@ Available commands:
         Example: todo rm 4
     - reset
         deletes all tasks
+    - restore 
+        restore recent backup after reset
     - sort
         sorts completed and uncompleted tasks
         Example: todo sort
