@@ -2,7 +2,7 @@ use colored::*;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::prelude::Read;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{self, BufReader, BufWriter, Write};
 use std::path::Path;
 use std::{env, process};
 
@@ -66,6 +66,10 @@ impl Todo {
 
     // Prints every todo saved
     pub fn list(&self) {
+        let handle = io::stdout().lock();
+        // Buffered writer for stdout stream
+        let mut writer = BufWriter::new(handle);
+        let mut data = String::new();
         // This loop will repeat itself for each task in TODO file
         for (number, task) in self.todo.iter().enumerate() {
             if task.len() > 5 {
@@ -81,12 +85,15 @@ impl Todo {
                 if symbol == "[*] " {
                     // DONE
                     // If the task is completed, then it prints it with a strikethrough
-                    println!("{} {}", number, task.strikethrough());
+                    data = format!("{} {}", number, task.strikethrough());
                 } else if symbol == "[ ] " {
                     // NOT DONE
                     // If the task is not completed yet, then it will print it as it is
-                    println!("{} {}", number, task);
+                    data = format!("{} {}", number, task);
                 }
+                writer
+                    .write_all(data.as_bytes())
+                    .expect("Failed to write to stdout");
             }
         }
     }
@@ -98,6 +105,10 @@ impl Todo {
         } else if arg.is_empty() {
             eprintln!("todo raw takes 1 argument (done/todo)");
         } else {
+            let handle = io::stdout().lock();
+            // Buffered writer for stdout stream
+            let mut writer = BufWriter::new(handle);
+            let mut data = String::new();
             // This loop will repeat itself for each task in TODO file
             for task in self.todo.iter() {
                 if task.len() > 5 {
@@ -110,13 +121,16 @@ impl Todo {
                     if symbol == "[*] " && arg[0] == "done" {
                         // DONE
                         //If the task is completed, then it prints it with a strikethrough
-                        println!("{}", task);
+                        data = format!("{}", task);
                     } else if symbol == "[ ] " && arg[0] == "todo" {
                         // NOT DONE
 
                         //If the task is not completed yet, then it will print it as it is
-                        println!("{}", task);
+                        data = format!("{}", task);
                     }
+                    writer
+                        .write_all(data.as_bytes())
+                        .expect("Failed to write to stdout");
                 }
             }
         }
