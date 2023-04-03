@@ -85,11 +85,11 @@ impl Todo {
                 if symbol == "[*] " {
                     // DONE
                     // If the task is completed, then it prints it with a strikethrough
-                    data = format!("{} {}", number, task.strikethrough());
+                    data = format!("{} {}\n", number, task.strikethrough());
                 } else if symbol == "[ ] " {
                     // NOT DONE
                     // If the task is not completed yet, then it will print it as it is
-                    data = format!("{} {}", number, task);
+                    data = format!("{} {}\n", number, task);
                 }
                 writer
                     .write_all(data.as_bytes())
@@ -121,12 +121,12 @@ impl Todo {
                     if symbol == "[*] " && arg[0] == "done" {
                         // DONE
                         //If the task is completed, then it prints it with a strikethrough
-                        data = format!("{}", task);
+                        data = format!("{}\n", task);
                     } else if symbol == "[ ] " && arg[0] == "todo" {
                         // NOT DONE
 
                         //If the task is not completed yet, then it will print it as it is
-                        data = format!("{}", task);
+                        data = format!("{}\n", task);
                     }
                     writer
                         .write_all(data.as_bytes())
