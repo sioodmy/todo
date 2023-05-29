@@ -36,11 +36,6 @@ macro_rules! util {
 }
 
 
-fn split(task: &str) -> Option<(char, String)> {
-	let mut vectorised = task.chars();
-	Some((vectorised.next()?, vectorised.collect()))
-}
-
 pub fn help() {
 	println!(
 		"Usage: todo [COMMAND] [ARGUMENTS]\n\
@@ -55,6 +50,11 @@ pub fn help() {
 		- sort   [                   ]: sorts by status\n\
 		- raw    [todo/done          ]: prints selection as plain text"
 	);
+}
+
+fn split(task: &str) -> Option<(char, String)> {
+	let mut vectorised = task.chars();
+	Some((vectorised.next()?, vectorised.collect()))
 }
 
 
