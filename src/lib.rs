@@ -71,35 +71,22 @@ impl Todo {
 			};
 			path
 		};
-
 		let todo_bak = PathBuf::from(
 			match env::var("TODO_BAK_DIR") {
 				Ok(t) => t,
 				Err(_) => String::from("/tmp/todo.bak"),
 			}
 		);
-
 		let no_backup = env::var("TODO_NOBACKUP").is_ok();
-
 		let Ok(todofile) = OpenOptions::new()
 			.write(true)
 			.read(true)
 			.create(true)
 			.open(&todo_path) else { err!{ Could not open a todo_file } };
-
-		// Creates a new buf reader
 		let mut buf_reader = BufReader::new(&todofile);
-
-		// Empty String ready to be filled with TODOs
 		let mut contents = String::new();
-
-		// Loads "contents" string with data
 		let Ok(_) = buf_reader.read_to_string(&mut contents) else { err!{ Reading into the String buffer failed } };
-
-		// Splits contents of the TODO file into a todo vector
 		let todo = contents.to_string().lines().map(str::to_string).collect();
-
-		// Returns todo
 		Ok(
 			Self {
 				todo,
@@ -110,7 +97,6 @@ impl Todo {
 		)
 	}
 
-	// Prints every todo saved
 	pub fn list(&self) {
 		self
 			.get_iter()
@@ -118,7 +104,6 @@ impl Todo {
 			.filter_map(|(mut order, task)|
 				{
 					order += 1;
-					if task.len() == 0 { None? };
 					let rest = {
 						let (completed, mut rest) = split(task)?;
 						if completed == '1' {
@@ -134,42 +119,29 @@ impl Todo {
 			.for_each(|(order, text)| println!("{order} {text}"));
 	}
 
-	// This one is for yall, dmenu chads <3
 	pub fn raw(&self, arg: &[String]) -> Result<(), String> {
 		err!{ arg }
-		// This loop will repeat itself for each task in TODO file
+		let character = if arg[0] == "done" { '1' } else { '0' };
 		self
 			.get_iter()
 			.filter_map(|task|
 				{
 					let (completed, rest) = split(task)?;
-					Some(
-						format!(
-							"[{}] {rest}",
-							match (completed, &*arg[0]) {
-								('1', "done") => '*',
-								('0', "todo") => ' ',
-								_ => None?,
-							}
-						)
-					)
+					if completed == character { return Some(rest) };
+					None
 				}
 			)
 			.for_each(|text| println!("{text}"));
 		Ok(())
 	}
 
-	// Adds a new todo
 	pub fn add(&self, args: &[String]) -> Result<(), String> {
 		err!{ args }
-		// Opens the TODO file with a permission to:
 		let Ok(todofile) = OpenOptions::new()
-			.create(true) // a) create the file if it does not exist
-			.append(true) // b) append a line to it
+			.create(true)
+			.append(true)
 			.open(&self.todo_path) else { err!{ Could not open a todo_file } };
-
 		let mut buffer = BufWriter::new(todofile);
-
 		for arg in args {
 			if arg.trim().is_empty() { continue };
 			err!{ format!("0{arg}\n").as_bytes() => buffer }
@@ -177,17 +149,13 @@ impl Todo {
 		Ok(())
 	}
 
-	// Removes a task
 	pub fn remove(&self, args: &[String]) -> Result<(), String> {
 		err!{ args }
-		// Opens the TODO file with a permission to:
 		let Ok(todofile) = OpenOptions::new()
 			.write(true) 
 			.truncate(true)
 			.open(&self.todo_path) else { err!{ Could not open the todo file } };
-
 		let mut buffer = BufWriter::new(todofile);
-
 		for task in self
 			.get_iter()			
 			.enumerate()
@@ -211,7 +179,6 @@ impl Todo {
 		Ok(())
 	}
 
-	// Clear todo by removing todo file
 	pub fn reset(&self) -> Result<(), String> {
 		if !self.no_backup { let Ok(_) = fs::copy(&self.todo_path, &self.todo_bak) else { err!{ Could not create a backup file } }; };
 		self.remove_file()?;
@@ -222,9 +189,7 @@ impl Todo {
 		Ok(())
 	}
 
-	// Sorts done tasks
 	pub fn sort(&self) -> Result<(), String> {
-		// Creates a new empty string
 		let partition = self
 			.todo
 			.len() / 2;
@@ -253,7 +218,6 @@ impl Todo {
 			.truncate(true) // b) truncrate
 			.open(&self.todo_path) else { err!{ Could not open the todo file } };
 
-		// Writes contents of a newtodo variable into the TODO file
 		err!{ newtodo.as_bytes() => todofile }
 		Ok(())
 	}
@@ -261,7 +225,6 @@ impl Todo {
 	pub fn done(&self, args: &[String]) -> Result<(), String> {
 		err!{ args }
 
-		// Opens the TODO file with a permission to overwrite it
 		let Ok(mut todofile) = OpenOptions::new()
 			.write(true)
 			.open(&self.todo_path) else { err!{ Could not open the todofile } };
@@ -273,16 +236,12 @@ impl Todo {
 				{
 					index += 1;
 					let (completed, rest) = split(task)?;
-					Some(
-						(
-							match (args.contains(&format!("{index}")), completed) {
-								(true, '1') => '0',
-								(true, '0') => '1',
-								(_, other) => other,
-							},
-							rest
-						)
-					)
+					let completed = match (args.contains(&format!("{index}")), completed) {
+						(true, '1') => '0',
+						(true, '0') => '1',
+						(_, other) => other,
+					};
+					Some((completed, rest))
 				}
 			)
 		{ err!{ format!("{completed}{task}\n").as_bytes() => todofile } }
