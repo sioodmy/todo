@@ -1,7 +1,7 @@
 use colored::*;
 use std::{
 	fs::{ self, OpenOptions },
-	io::{ BufReader, BufWriter, Write, Read},
+	io::{ Write, Read},
 	path::PathBuf,
 	env::{ self, VarError as Var },
 };
@@ -15,15 +15,23 @@ pub struct Todo {
 }
 
 
-macro_rules! err {
+macro_rules! util {
 	() => { concat!("Error@[", line!(), ',', column!(), "]: ") };
 	($bytes: expr => $file: ident) => {
-		let Ok(_) = $file.write_all($bytes) else { err!{ Unable to write data } };
+		let Ok(_) = $file.write_all($bytes) else { util!{ Unable to write data } };
 	};
 	($arguments: ident) => {
-		if $arguments.is_empty() { err!{ "raw" takes in at least a single argument } }
+		if $arguments.is_empty() { util!{ "raw" takes in at least a single argument } }
 	};
-	($($addendum: tt)+) => { Err(concat!(err!(), stringify!($($addendum)+), '.'))? };
+	($todo: expr => $($option: ident $value: block)+) => {
+		{
+			let Ok(file) = OpenOptions::new()
+				$(.$option($value))+
+				.open(&$todo) else { util!{ Could not open a todo_file } };
+			file
+		}
+	};
+	($($addendum: tt)+) => { Err(concat!(util!(), stringify!($($addendum)+), '.'))? };
 }
 
 
@@ -63,8 +71,8 @@ impl Todo {
 				Err(_) => {
 					let home = match env::var("HOME") {
 						Ok(home) => home,
-						Err(Var::NotPresent	) => err!{ HOME environment variable was not found },
-						Err(Var::NotUnicode(_)	) => err!{ HOME environment variabe contains some invalid unicode },
+						Err(Var::NotPresent	) => util!{ HOME environment variable was not found },
+						Err(Var::NotUnicode(_)	) => util!{ HOME environment variabe contains some invalid unicode },
 					};
 					PathBuf::from(format!("{home}/.todo"))
 				}
@@ -78,14 +86,14 @@ impl Todo {
 			}
 		);
 		let no_backup = env::var("TODO_NOBACKUP").is_ok();
-		let Ok(todofile) = OpenOptions::new()
-			.write(true)
-			.read(true)
-			.create(true)
-			.open(&todo_path) else { err!{ Could not open a todo_file } };
-		let mut buf_reader = BufReader::new(&todofile);
+		let mut todo_file = util!{
+			todo_path =>
+				write	{ true }
+				read	{ true }
+				create	{ true }
+		};
 		let mut contents = String::new();
-		let Ok(_) = buf_reader.read_to_string(&mut contents) else { err!{ Reading into the String buffer failed } };
+		let Ok(_) = todo_file.read_to_string(&mut contents) else { util!{ Reading into the String buffer failed } };
 		let todo = contents.to_string().lines().map(str::to_string).collect();
 		Ok(
 			Self {
@@ -98,7 +106,7 @@ impl Todo {
 	}
 
 	pub fn list(&self) {
-		self
+		let output = self
 			.get_iter()
 			.enumerate()
 			.filter_map(|(mut order, task)|
@@ -113,16 +121,18 @@ impl Todo {
 						}
 						rest
 					};
-					Some((format!("{order}").bold(), rest))
+					Some(format!("{} {rest}", format!("{order}").bold()))
 				}
 			)
-			.for_each(|(order, text)| println!("{order} {text}"));
+			.collect::<Vec<String>>()
+			.join("\n");
+		println!("{output}");
 	}
 
 	pub fn raw(&self, arg: &[String]) -> Result<(), String> {
-		err!{ arg }
+		util!{ arg }
 		let character = if arg[0] == "done" { '1' } else { '0' };
-		self
+		let output = self
 			.get_iter()
 			.filter_map(|task|
 				{
@@ -131,105 +141,100 @@ impl Todo {
 					None
 				}
 			)
-			.for_each(|text| println!("{text}"));
+			.collect::<Vec<String>>()
+			.join("\n");
+		println!("{output}");
 		Ok(())
 	}
 
-	pub fn add(&self, args: &[String]) -> Result<(), String> {
-		err!{ args }
-		let Ok(todofile) = OpenOptions::new()
-			.create(true)
-			.append(true)
-			.open(&self.todo_path) else { err!{ Could not open a todo_file } };
-		let mut buffer = BufWriter::new(todofile);
-		for arg in args {
-			if arg.trim().is_empty() { continue };
-			err!{ format!("0{arg}\n").as_bytes() => buffer }
-		}
+	pub fn add(&self, arguments: &[String]) -> Result<(), String> {
+		util!{ arguments }
+		let mut todo_file = util!{
+			self.todo_path =>
+				create	{ true }
+				append	{ true }
+		};
+		let output = arguments
+			.iter()
+			.filter_map(|argument|
+				{
+					if argument
+						.trim()
+						.is_empty()
+					{ None? };
+					Some(format!("0{argument}"))
+				}
+			)
+			.collect::<Vec<String>>()
+			.join("\n");
+		util!{ output.as_bytes() => todo_file }
 		Ok(())
 	}
 
-	pub fn remove(&self, args: &[String]) -> Result<(), String> {
-		err!{ args }
-		let Ok(todofile) = OpenOptions::new()
-			.write(true) 
-			.truncate(true)
-			.open(&self.todo_path) else { err!{ Could not open the todo file } };
-		let mut buffer = BufWriter::new(todofile);
-		for task in self
+	pub fn remove(&self, arguments: &[String]) -> Result<(), String> {
+		util!{ arguments }
+		let mut todo_file = util!{
+			self.todo_path =>
+				write		{ true }
+				truncate	{ true }
+		};
+		let output = self
 			.get_iter()			
 			.enumerate()
 			.filter_map(|(mut index, task)|
 				{
 					index += 1;
 					let (completed, _) = split(task)?;
-					if args
+					if arguments
 						.iter()
 						.any(|text| (text == "done" && completed == '1') || text == &format!("{index}"))
 					{ None? };
-					Some(format!("{task}\n"))
+					Some(format!("{task}"))
 				}
 			)
-		{ err!{ task.as_bytes() => buffer } }
+			.collect::<Vec<String>>()
+			.join("\n");
+		util!{ output.as_bytes() => todo_file }
 		Ok(())
 	}
 
 	fn remove_file(&self) -> Result<(), String> {
-		let Ok(_) = fs::remove_file(&self.todo_path) else { err!{ Error whilst removing the todo_file } };
+		let Ok(_) = fs::remove_file(&self.todo_path) else { util!{ Error whilst removing the todo_file } };
 		Ok(())
 	}
 
 	pub fn reset(&self) -> Result<(), String> {
-		if !self.no_backup { let Ok(_) = fs::copy(&self.todo_path, &self.todo_bak) else { err!{ Could not create a backup file } }; };
+		if !self.no_backup { let Ok(_) = fs::copy(&self.todo_path, &self.todo_bak) else { util!{ Could not create a backup file } }; };
 		self.remove_file()?;
 		Ok(())
 	}
 	pub fn restore(&self) -> Result<(), String> {
-		let Ok(_) = fs::copy(&self.todo_bak, &self.todo_path) else { err!{ Could not restore the backup } };
+		let Ok(_) = fs::copy(&self.todo_bak, &self.todo_path) else { util!{ Could not restore the backup } };
 		Ok(())
 	}
 
 	pub fn sort(&self) -> Result<(), String> {
-		let partition = self
+		let mut sorted_todo = self
 			.todo
-			.len() / 2;
-
-		let (todo, done) = self
-			.get_iter()
-			.filter_map(|task| split(task))
-			.fold((Vec::with_capacity(partition), Vec::with_capacity(partition)), |(mut todo, mut done), (completed, rest)|
-				{
-					match completed {
-						'0' => todo.push(format!("{completed}{rest}")),
-						'1' => done.push(format!("{completed}{rest}")),
-						_ => (),
-					}
-					(todo, done)
-				}
-			);
-		let newtodo = vec![todo, done]
-			.into_iter()
-			.flatten()
-			.collect::<Vec<String>>()
-			.join("\n");
-
-		let Ok(mut todofile) = OpenOptions::new()
-			.write(true) // a) write
-			.truncate(true) // b) truncrate
-			.open(&self.todo_path) else { err!{ Could not open the todo file } };
-
-		err!{ newtodo.as_bytes() => todofile }
+			.clone();
+		sorted_todo.sort_unstable();
+		let mut todo_file = util!{
+			self.todo_path =>
+				write		{ true }
+				truncate	{ true }
+		};
+		util!{
+			sorted_todo
+				.join("\n")
+				.as_bytes() => todo_file
+		}
 		Ok(())
 	}
 
 	pub fn done(&self, args: &[String]) -> Result<(), String> {
-		err!{ args }
-
-		let Ok(mut todofile) = OpenOptions::new()
-			.write(true)
-			.open(&self.todo_path) else { err!{ Could not open the todofile } };
-
-		for (completed, task) in self
+		util!{ args }
+		let mut todo_file = util!{ self.todo_path => write { true } };
+		let output = self
 			.get_iter()
 			.enumerate()
 			.filter_map(|(mut index, task)|
@@ -241,10 +246,12 @@ impl Todo {
 						(true, '0') => '1',
 						(_, other) => other,
 					};
-					Some((completed, rest))
+					Some(format!("{completed}{rest}"))
 				}
 			)
-		{ err!{ format!("{completed}{task}\n").as_bytes() => todofile } }
+			.collect::<Vec<String>>()
+			.join("\n");
+		util!{ output.as_bytes() => todo_file }
 		Ok(())
 	}
 }
