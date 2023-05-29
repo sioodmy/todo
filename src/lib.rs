@@ -1,4 +1,5 @@
 use colored::*;
+use itoa::Buffer;
 use std::{
 	fs::{ self, OpenOptions },
 	io::{ Write, Read},
@@ -105,28 +106,26 @@ impl Todo {
 		)
 	}
 
-	pub fn list(&self) {
+	pub fn list(&self, buffer: &mut Buffer) -> Result<(), String> {
 		let output = self
 			.get_iter()
 			.enumerate()
 			.filter_map(|(mut order, task)|
 				{
 					order += 1;
-					let rest = {
-						let (completed, mut rest) = split(task)?;
-						if completed == '1' {
-							rest = rest
-								.strikethrough()
-								.to_string()
-						}
-						rest
-					};
-					Some(format!("{} {rest}", format!("{order}").bold()))
+					let (completed, mut rest) = split(task)?;
+					if completed == '1' {
+						rest = rest
+							.strikethrough()
+							.to_string()
+					}
+					Some(format!("{} {rest}", buffer.format(order).bold()))
 				}
 			)
 			.collect::<Vec<String>>()
 			.join("\n");
 		println!("{output}");
+		Ok(())
 	}
 
 	pub fn raw(&self, arg: &[String]) -> Result<(), String> {
@@ -171,7 +170,7 @@ impl Todo {
 		Ok(())
 	}
 
-	pub fn remove(&self, arguments: &[String]) -> Result<(), String> {
+	pub fn remove(&self, arguments: &[String], buffer: &mut Buffer) -> Result<(), String> {
 		util!{ arguments }
 		let mut todo_file = util!{
 			self.todo_path =>
@@ -187,7 +186,7 @@ impl Todo {
 					let (completed, _) = split(task)?;
 					if arguments
 						.iter()
-						.any(|text| (text == "done" && completed == '1') || text == &format!("{index}"))
+						.any(|text| (text == "done" && completed == '1') || text == buffer.format(index))
 					{ None? };
 					Some(format!("{task}"))
 				}
@@ -231,9 +230,10 @@ impl Todo {
 		Ok(())
 	}
 
-	pub fn done(&self, args: &[String]) -> Result<(), String> {
-		util!{ args }
+	pub fn done(&self, arguments: &[String], buffer: &mut Buffer) -> Result<(), String> {
+		util!{ arguments }
 		let mut todo_file = util!{ self.todo_path => write { true } };
+		let mut position = String::with_capacity(50);
 		let output = self
 			.get_iter()
 			.enumerate()
@@ -241,7 +241,8 @@ impl Todo {
 				{
 					index += 1;
 					let (completed, rest) = split(task)?;
-					let completed = match (args.contains(&format!("{index}")), completed) {
+					position.replace_range(.., buffer.format(index));
+					let completed = match (arguments.contains(&position), completed) {
 						(true, '1') => '0',
 						(true, '0') => '1',
 						(_, other) => other,
