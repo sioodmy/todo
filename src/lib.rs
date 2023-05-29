@@ -24,10 +24,10 @@ macro_rules! util {
 	($arguments: ident) => {
 		if $arguments.is_empty() { util!{ "raw" takes in at least a single argument } }
 	};
-	($todo: expr; $($option: ident() $value: expr),+ $(,)?) => {
+	($todo: expr; $($option: ident),+ $(,)?) => {
 		{
 			let Ok(file) = OpenOptions::new()
-				$(.$option($value))+
+				$(.$option(true))+
 				.open(&$todo) else { util!{ Could not open a todo_file } };
 			file
 		}
@@ -84,12 +84,7 @@ impl Todo {
 			}
 		);
 		let no_backup = env::var("TODO_NOBACKUP").is_ok();
-		let mut todo_file = util!{
-			todo_path;
-				write() true,
-				read() true,
-				create() true,
-		};
+		let mut todo_file = util!{ todo_path; write, read, create };
 		let mut contents = String::new();
 		let Ok(_) = todo_file.read_to_string(&mut contents) else { util!{ Reading into the String buffer failed } };
 		let todo = contents.to_string().lines().map(str::to_string).collect();
@@ -145,11 +140,7 @@ impl Todo {
 
 	pub fn add(&self, arguments: &[String]) -> Result<(), String> {
 		util!{ arguments }
-		let mut todo_file = util!{
-			self.todo_path;
-				create() true,
-				append() true,
-		};
+		let mut todo_file = util!{ self.todo_path; create, append };
 		let output = arguments
 			.iter()
 			.filter_map(|argument|
@@ -168,11 +159,7 @@ impl Todo {
 
 	pub fn remove(&self, arguments: &[String], buffer: &mut Buffer) -> Result<(), String> {
 		util!{ arguments }
-		let mut todo_file = util!{
-			self.todo_path;
-				write() true,
-				truncate() true,
-		};
+		let mut todo_file = util!{ self.todo_path; write, truncate };
 		let output = self
 			.get_iter()			
 			.enumerate()
@@ -213,11 +200,7 @@ impl Todo {
 			.todo
 			.clone();
 		sorted_todo.sort_unstable();
-		let mut todo_file = util!{
-			self.todo_path;
-				write() true,
-				truncate() true,
-		};
+		let mut todo_file = util!{ self.todo_path; write, truncate };
 		util!{
 			sorted_todo
 				.join("\n")
@@ -228,7 +211,7 @@ impl Todo {
 
 	pub fn done(&self, arguments: &[String], buffer: &mut Buffer) -> Result<(), String> {
 		util!{ arguments }
-		let mut todo_file = util!{ self.todo_path; write() true };
+		let mut todo_file = util!{ self.todo_path; write };
 		let mut position = String::with_capacity(50);
 		let output = self
 			.get_iter()
