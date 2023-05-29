@@ -1,11 +1,8 @@
 use colored::*;
 use itoa::Buffer;
-use std::{
-	fs::{ self, OpenOptions },
-	io::{ Write, Read},
-	path::PathBuf,
-	env::{ self, VarError as Var },
-};
+use std::{ fs, env };
+use std::io::{ Write, Read};
+use std::path::PathBuf;
 
 
 pub struct Todo {
@@ -26,7 +23,7 @@ macro_rules! util {
 	};
 	($todo: expr; $($option: ident),+ $(,)?) => {
 		{
-			let Ok(file) = OpenOptions::new()
+			let Ok(file) = fs::OpenOptions::new()
 				$(.$option(true))+
 				.open(&$todo) else { util!{ Could not open a todo_file } };
 			file
@@ -71,8 +68,8 @@ impl Todo {
 			Err(_) => {
 				let home = match env::var("HOME") {
 					Ok(home) => home,
-					Err(Var::NotPresent	) => util!{ HOME environment variable was not found },
-					Err(Var::NotUnicode(_)	) => util!{ HOME environment variabe contains some invalid unicode },
+					Err(env::VarError::NotPresent	) => util!{ HOME environment variable was not found },
+					Err(env::VarError::NotUnicode(_)) => util!{ HOME environment variabe contains some invalid unicode },
 				};
 				PathBuf::from(format!("{home}/.todo"))
 			}
