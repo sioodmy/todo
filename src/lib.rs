@@ -24,7 +24,7 @@ macro_rules! util {
 	($arguments: ident) => {
 		if $arguments.is_empty() { util!{ "raw" takes in at least a single argument } }
 	};
-	($todo: expr => $($option: ident $value: block)+) => {
+	($todo: expr; $($option: ident() $value: expr),+ $(,)?) => {
 		{
 			let Ok(file) = OpenOptions::new()
 				$(.$option($value))+
@@ -46,14 +46,14 @@ pub fn help() {
 r#"Usage: todo [COMMAND] [ARGUMENTS]
 Todo is a super fast and simple tasks organizer written in rust
 Available commands:
-- add    [TASK...  ]: adds new task/s
-- list   [         ]: lists all tasks
-- done   [INDEX... ]: marks task as done
-- rm     [INDEX... ]: removes a task
-- reset  [         ]: deletes all tasks
-- restore[         ]: restore recent backup
-- sort   [         ]: sorts by status
-- raw    [todo/done]: prints selection as plain text"#
+- add    [TASK...            ]: adds new task/s
+- list   [                   ]: lists all tasks
+- done   [INDEX/NAME...      ]: marks task as done
+- rm     [INDEX/NAME/done... ]: removes a task
+- reset  [                   ]: deletes all tasks
+- restore[                   ]: restore recent backup
+- sort   [                   ]: sorts by status
+- raw    [todo/done          ]: prints selection as plain text"#
 	);
 }
 
@@ -66,19 +66,16 @@ impl Todo {
 	}
 
 	pub fn new() -> Result<Self, String> {
-		let todo_path = {
-			let path = match env::var("TODO_PATH") {
-				Ok(path) => PathBuf::from(path),
-				Err(_) => {
-					let home = match env::var("HOME") {
-						Ok(home) => home,
-						Err(Var::NotPresent	) => util!{ HOME environment variable was not found },
-						Err(Var::NotUnicode(_)	) => util!{ HOME environment variabe contains some invalid unicode },
-					};
-					PathBuf::from(format!("{home}/.todo"))
-				}
-			};
-			path
+		let todo_path = match env::var("TODO_PATH") {
+			Ok(path) => PathBuf::from(path),
+			Err(_) => {
+				let home = match env::var("HOME") {
+					Ok(home) => home,
+					Err(Var::NotPresent	) => util!{ HOME environment variable was not found },
+					Err(Var::NotUnicode(_)	) => util!{ HOME environment variabe contains some invalid unicode },
+				};
+				PathBuf::from(format!("{home}/.todo"))
+			}
 		};
 		let todo_bak = PathBuf::from(
 			match env::var("TODO_BAK_DIR") {
@@ -88,10 +85,10 @@ impl Todo {
 		);
 		let no_backup = env::var("TODO_NOBACKUP").is_ok();
 		let mut todo_file = util!{
-			todo_path =>
-				write	{ true }
-				read	{ true }
-				create	{ true }
+			todo_path;
+				write() true,
+				read() true,
+				create() true,
 		};
 		let mut contents = String::new();
 		let Ok(_) = todo_file.read_to_string(&mut contents) else { util!{ Reading into the String buffer failed } };
@@ -149,9 +146,9 @@ impl Todo {
 	pub fn add(&self, arguments: &[String]) -> Result<(), String> {
 		util!{ arguments }
 		let mut todo_file = util!{
-			self.todo_path =>
-				create	{ true }
-				append	{ true }
+			self.todo_path;
+				create() true,
+				append() true,
 		};
 		let output = arguments
 			.iter()
@@ -172,9 +169,9 @@ impl Todo {
 	pub fn remove(&self, arguments: &[String], buffer: &mut Buffer) -> Result<(), String> {
 		util!{ arguments }
 		let mut todo_file = util!{
-			self.todo_path =>
-				write		{ true }
-				truncate	{ true }
+			self.todo_path;
+				write() true,
+				truncate() true,
 		};
 		let output = self
 			.get_iter()			
@@ -185,7 +182,7 @@ impl Todo {
 					let (completed, rest) = split(task)?;
 					if arguments
 						.iter()
-						.any(|input| (input == "done" && completed == '1') || input == buffer.format(index) || input == &rest)
+						.any(|argument| (argument == "done" && completed == '1') || argument == buffer.format(index) || argument == &rest)
 					{ None? };
 					Some(format!("{task}"))
 				}
@@ -217,9 +214,9 @@ impl Todo {
 			.clone();
 		sorted_todo.sort_unstable();
 		let mut todo_file = util!{
-			self.todo_path =>
-				write		{ true }
-				truncate	{ true }
+			self.todo_path;
+				write() true,
+				truncate() true,
 		};
 		util!{
 			sorted_todo
@@ -231,7 +228,7 @@ impl Todo {
 
 	pub fn done(&self, arguments: &[String], buffer: &mut Buffer) -> Result<(), String> {
 		util!{ arguments }
-		let mut todo_file = util!{ self.todo_path => write { true } };
+		let mut todo_file = util!{ self.todo_path; write() true };
 		let mut position = String::with_capacity(50);
 		let output = self
 			.get_iter()
@@ -241,7 +238,12 @@ impl Todo {
 					index += 1;
 					let (completed, rest) = split(task)?;
 					position.replace_range(.., buffer.format(index));
-					let completed = match (arguments.contains(&position), completed) {
+					let completed = match (
+						arguments
+							.iter()
+							.any(|argument| argument == &position || argument == &rest),
+						completed,
+					) {
 						(true, '1') => '0',
 						(true, '0') => '1',
 						(_, other) => other,
