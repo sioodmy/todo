@@ -8,8 +8,7 @@ use std::path::PathBuf;
 pub struct Todo {
 	pub todo: Vec<String>,
 	pub todo_path: PathBuf,
-	pub todo_bak: PathBuf,
-	pub no_backup: bool,
+	pub todo_bak: Option<PathBuf>,
 }
 
 
@@ -74,13 +73,16 @@ impl Todo {
 				PathBuf::from(format!("{home}/.todo"))
 			}
 		};
-		let todo_bak = PathBuf::from(
-			match env::var("TODO_BAK_DIR") {
-				Ok(t) => t,
-				Err(_) => String::from("/tmp/todo.bak"),
-			}
-		);
-		let no_backup = env::var("TODO_NOBACKUP").is_ok();
+		let todo_bak = match env::var("TODO_BAK_DIR") {
+			Ok(path) => Some(
+				{
+					let path = PathBuf::from(path);
+					if !path.exists() { PathBuf::from("/tmp/todo.bak") } else { path }
+				}
+
+			),
+			Err(_) => None,
+		};
 		let mut todo_file = util!{ todo_path; write, read, create };
 		let mut contents = String::new();
 		let Ok(_) = todo_file.read_to_string(&mut contents) else { util!{ Reading into the String buffer failed } };
@@ -90,7 +92,6 @@ impl Todo {
 				todo,
 				todo_path,
 				todo_bak,
-				no_backup,
 			}
 		)
 	}
@@ -183,12 +184,16 @@ impl Todo {
 	}
 
 	pub fn reset(&self) -> Result<(), String> {
-		if !self.no_backup { let Ok(_) = fs::copy(&self.todo_path, &self.todo_bak) else { util!{ Could not create a backup file } }; };
+		if let Some(ref todo_bak) = self.todo_bak {
+			let Ok(_) = fs::copy(&self.todo_path, todo_bak) else { util!{ Could not create a backup file } };			
+		}
 		self.remove_file()?;
 		Ok(())
 	}
 	pub fn restore(&self) -> Result<(), String> {
-		let Ok(_) = fs::copy(&self.todo_bak, &self.todo_path) else { util!{ Could not restore the backup } };
+		if let Some(ref todo_bak) = self.todo_bak {
+			let Ok(_) = fs::copy(todo_bak, &self.todo_path) else { util!{ Could not restore the backup } };
+		}
 		Ok(())
 	}
 
