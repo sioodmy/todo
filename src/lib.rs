@@ -43,17 +43,17 @@ fn split(task: &str) -> Option<(char, String)> {
 
 pub fn help() {
 	println!(
-r#"Usage: todo [COMMAND] [ARGUMENTS]
-Todo is a super fast and simple tasks organizer written in rust
-Available commands:
-- add    [TASK...            ]: adds new task/s
-- list   [                   ]: lists all tasks
-- done   [INDEX/NAME...      ]: marks task as done
-- rm     [INDEX/NAME/done... ]: removes a task
-- reset  [                   ]: deletes all tasks
-- restore[                   ]: restore recent backup
-- sort   [                   ]: sorts by status
-- raw    [todo/done          ]: prints selection as plain text"#
+		"Usage: todo [COMMAND] [ARGUMENTS]\n\
+		Todo is a super fast and simple tasks organizer written in rust\n\
+		Available commands:\n\
+		- add    [TASK...            ]: adds new task/s\n\
+		- list   [                   ]: lists all tasks\n\
+		- done   [INDEX/NAME...      ]: marks task as done\n\
+		- rm     [INDEX/NAME/done... ]: removes a task\n\
+		- reset  [                   ]: deletes all tasks\n\
+		- restore[                   ]: restore recent backup\n\
+		- sort   [                   ]: sorts by status\n\
+		- raw    [todo/done          ]: prints selection as plain text"
 	);
 }
 
@@ -125,9 +125,9 @@ impl Todo {
 		Ok(())
 	}
 
-	pub fn raw(&self, arg: &[String]) -> Result<(), String> {
-		util!{ arg }
-		let character = if arg[0] == "done" { '1' } else { '0' };
+	pub fn raw(&self, arguments: &[String]) -> Result<(), String> {
+		util!{ arguments }
+		let character = if arguments[0] == "done" { '1' } else { '0' };
 		let output = self
 			.get_iter()
 			.filter_map(|task|
@@ -158,7 +158,7 @@ impl Todo {
 						.trim()
 						.is_empty()
 					{ None? };
-					Some(format!("\n0{argument}"))
+					Some(format!("0{argument}\n"))
 				}
 			)
 			.collect::<String>();
