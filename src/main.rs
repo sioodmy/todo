@@ -21,5 +21,10 @@ fn main() {
 			"restore" => todo.restore(),
 			"help" | "--help" | "-h" | _ => Ok(help()),
 		} { eprintln!("{error}") };
-	} else { todo.list(); return };
+	} else {
+		help();
+		println!();
+		todo.list();
+		return
+	};
 }

@@ -37,14 +37,14 @@ pub fn help() {
 r#"Usage: todo [COMMAND] [ARGUMENTS]
 Todo is a super fast and simple tasks organizer written in rust
 Available commands:
-- add	[TASK/s]	: adds new task/s		(Example: todo add "buy carrots")
-- list			: lists all tasks		(todo list			)
-- done	[INDEX]		: marks task as done		(todo done 2 3			)
-- rm	[INDEX]		: removes a task		(todo rm 4			)
-- reset			: deletes all tasks		(				)
-- restore		: restore recent backup		(				)
-- sort			: sorts by status		(todo sort			)
-- raw [todo/done]	: prints selection as plain text(todo raw done			)"#
+- add    [TASK...  ]: adds new task/s
+- list   [         ]: lists all tasks
+- done   [INDEX... ]: marks task as done
+- rm     [INDEX... ]: removes a task
+- reset  [         ]: deletes all tasks
+- restore[         ]: restore recent backup
+- sort   [         ]: sorts by status
+- raw    [todo/done]: prints selection as plain text"#
 	);
 }
 
