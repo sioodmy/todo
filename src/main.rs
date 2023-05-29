@@ -1,25 +1,25 @@
 use std::env;
-use todo_bin::{help, Todo};
+use todo_bin::{ help, Todo };
 
 fn main() {
-    let todo = Todo::new().expect("Couldn't create the todo instance");
+	let mut args = env::args().skip(1);
+	let todo = match Todo::new() {
+		Ok(instance) => instance,
+		Err(error) => { eprintln!("{error}"); return },
+	};
 
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() > 1 {
-        let command = &args[1];
-        match &command[..] {
-            "list" => todo.list(),
-            "add" => todo.add(&args[2..]),
-            "rm" => todo.remove(&args[2..]),
-            "done" => todo.done(&args[2..]),
-            "raw" => todo.raw(&args[2..]),
-            "sort" => todo.sort(),
-            "reset" => todo.reset(),
-            "restore" => todo.restore(),
-            "help" | "--help" | "-h" | _ => help(),
-        }
-    } else {
-        todo.list();
-    }
+	if let Some(command) = args.next() {
+		let rest: Vec<String> = args.collect();
+		if let Err(error) = match &*command {
+			"list" => Ok(todo.list()),
+			"add" => todo.add(&rest),
+			"rm" => todo.remove(&rest),
+			"done" => todo.done(&rest),
+			"raw" => todo.raw(&rest),
+			"sort" => todo.sort(),
+			"reset" => todo.reset(),
+			"restore" => todo.restore(),
+			"help" | "--help" | "-h" | _ => Ok(help()),
+		} { eprintln!("{error}") };
+	} else { todo.list(); return };
 }

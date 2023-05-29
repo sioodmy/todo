@@ -1,323 +1,297 @@
 use colored::*;
-use std::fs;
-use std::fs::OpenOptions;
-use std::io::prelude::Read;
-use std::io::{self, BufReader, BufWriter, Write};
-use std::path::Path;
-use std::{env, process};
+use std::{
+	fs::{ self, OpenOptions },
+	io::{ BufReader, BufWriter, Write, Read},
+	path::PathBuf,
+	env::{ self, VarError as Var },
+};
+
 
 pub struct Todo {
-    pub todo: Vec<String>,
-    pub todo_path: String,
-    pub todo_bak: String,
-    pub no_backup: bool,
+	pub todo: Vec<String>,
+	pub todo_path: PathBuf,
+	pub todo_bak: PathBuf,
+	pub no_backup: bool,
 }
+
+
+trait Pipe: Sized {
+	fn pipe<U>(self, function: fn(Self) -> U) -> U { function(self) }
+}
+
+
+macro_rules! err {
+	() => { concat!("Error@[", line!(), ',', column!(), "]: ") };
+	($bytes: expr => $file: ident) => {
+		let Ok(_) = $file.write_all($bytes) else { err!{ Unable to write data } };
+	};
+	($arguments: ident) => {
+		if $arguments.is_empty() { err!{ "raw" takes in at least a single argument } }
+	};
+	($($addendum: tt)+) => { Err(concat!(err!(), stringify!($($addendum)+), '.'))? };
+}
+
+
+fn split(task: &str) -> Option<(char, String)> {
+	let mut vectorised = task.chars();
+	Some((vectorised.next()?, vectorised.collect()))
+}
+
+pub fn help() {
+	println!(
+r#"Usage: todo [COMMAND] [ARGUMENTS]
+Todo is a super fast and simple tasks organizer written in rust
+Available commands:
+- add	[TASK/s]	: adds new task/s		(Example: todo add "buy carrots")
+- list			: lists all tasks		(todo list			)
+- done	[INDEX]		: marks task as done		(todo done 2 3			)
+- rm	[INDEX]		: removes a task		(todo rm 4			)
+- reset			: deletes all tasks		(				)
+- restore		: restore recent backup		(				)
+- sort			: sorts by status		(todo sort			)
+- raw [todo/done]	: prints selection as plain text(todo raw done			)"#
+	);
+}
+
 
 impl Todo {
-    pub fn new() -> Result<Self, String> {
-        let todo_path: String = match env::var("TODO_PATH") {
-            Ok(t) => t,
-            Err(_) => {
-                let home = env::var("HOME").unwrap();
+	fn get_iter(&self) -> impl Iterator<Item = &String> {
+		self
+			.todo
+			.iter()
+	}
 
-                // Look for a legacy TODO file path
-                let legacy_todo = format!("{}/TODO", &home);
-                match Path::new(&legacy_todo).exists() {
-                    true => legacy_todo,
-                    false => format!("{}/.todo", &home),
-                }
-            }
-        };
+	pub fn new() -> Result<Self, String> {
+		let todo_path = {
+			let path = match env::var("TODO_PATH") {
+				Ok(path) => PathBuf::from(path),
+				Err(_) => {
+					let home = match env::var("HOME") {
+						Ok(home) => home,
+						Err(Var::NotPresent	) => err!{ HOME environment variable was not found },
+						Err(Var::NotUnicode(_)	) => err!{ HOME environment variabe contains some invalid unicode },
+					};
+					PathBuf::from(format!("{home}/.todo"))
+				}
+			};
+			path
+		};
 
-        let todo_bak: String = match env::var("TODO_BAK_DIR") {
-            Ok(t) => t,
-            Err(_) => String::from("/tmp/todo.bak"),
-        };
+		let todo_bak = match env::var("TODO_BAK_DIR") {
+			Ok(t) => t,
+			Err(_) => String::from("/tmp/todo.bak"),
+		}
+			.pipe(PathBuf::from);
 
-        let no_backup = env::var("TODO_NOBACKUP").is_ok();
+		let no_backup = env::var("TODO_NOBACKUP").is_ok();
 
-        let todofile = OpenOptions::new()
-            .write(true)
-            .read(true)
-            .create(true)
-            .open(&todo_path)
-            .expect("Couldn't open the todofile");
+		let Ok(todofile) = OpenOptions::new()
+			.write(true)
+			.read(true)
+			.create(true)
+			.open(&todo_path) else { err!{ Could not open a todo_file } };
 
-        // Creates a new buf reader
-        let mut buf_reader = BufReader::new(&todofile);
+		// Creates a new buf reader
+		let mut buf_reader = BufReader::new(&todofile);
 
-        // Empty String ready to be filled with TODOs
-        let mut contents = String::new();
+		// Empty String ready to be filled with TODOs
+		let mut contents = String::new();
 
-        // Loads "contents" string with data
-        buf_reader.read_to_string(&mut contents).unwrap();
+		// Loads "contents" string with data
+		let Ok(_) = buf_reader.read_to_string(&mut contents) else { err!{ Reading into the String buffer failed } };
 
-        // Splits contents of the TODO file into a todo vector
-        let todo = contents.to_string().lines().map(str::to_string).collect();
+		// Splits contents of the TODO file into a todo vector
+		let todo = contents.to_string().lines().map(str::to_string).collect();
 
-        // Returns todo
-        Ok(Self {
-            todo,
-            todo_path,
-            todo_bak,
-            no_backup,
-        })
-    }
+		// Returns todo
+		Ok(
+			Self {
+				todo,
+				todo_path,
+				todo_bak,
+				no_backup,
+			}
+		)
+	}
 
-    // Prints every todo saved
-    pub fn list(&self) {
-        let handle = io::stdout().lock();
-        // Buffered writer for stdout stream
-        let mut writer = BufWriter::new(handle);
-        let mut data = String::new();
-        // This loop will repeat itself for each task in TODO file
-        for (number, task) in self.todo.iter().enumerate() {
-            if task.len() > 5 {
-                // Converts virgin default number into a chad BOLD string
-                let number = (number + 1).to_string().bold();
+	// Prints every todo saved
+	pub fn list(&self) {
+		self
+			.get_iter()
+			.enumerate()
+			.filter_map(|(mut order, task)|
+				{
+					order += 1;
+					if task.len() == 0 { None? };
+					let rest = {
+						let (completed, mut rest) = split(task)?;
+						if completed == '1' {
+							rest = rest
+								.strikethrough()
+								.to_string()
+						}
+						rest
+					};
+					Some((format!("{order}").bold(), rest))
+				}
+			)
+			.for_each(|(order, text)| println!("{order} {text}"));
+	}
 
-                // Saves the symbol of current task
-                let symbol = &task[..4];
-                // Saves a task without a symbol
-                let task = &task[4..];
+	// This one is for yall, dmenu chads <3
+	pub fn raw(&self, arg: &[String]) -> Result<(), String> {
+		err!{ arg }
+		// This loop will repeat itself for each task in TODO file
+		self
+			.get_iter()
+			.filter_map(|task|
+				{
+					let (completed, rest) = split(task)?;
+					Some(
+						format!(
+							"[{}] {rest}",
+							match (completed, &*arg[0]) {
+								('1', "done") => '*',
+								('0', "todo") => ' ',
+								_ => None?,
+							}
+						)
+					)
+				}
+			)
+			.for_each(|text| println!("{text}"));
+		Ok(())
+	}
 
-                // Checks if the current task is completed or not...
-                if symbol == "[*] " {
-                    // DONE
-                    // If the task is completed, then it prints it with a strikethrough
-                    data = format!("{} {}\n", number, task.strikethrough());
-                } else if symbol == "[ ] " {
-                    // NOT DONE
-                    // If the task is not completed yet, then it will print it as it is
-                    data = format!("{} {}\n", number, task);
-                }
-                writer
-                    .write_all(data.as_bytes())
-                    .expect("Failed to write to stdout");
-            }
-        }
-    }
+	// Adds a new todo
+	pub fn add(&self, args: &[String]) -> Result<(), String> {
+		err!{ args }
+		// Opens the TODO file with a permission to:
+		let Ok(todofile) = OpenOptions::new()
+			.create(true) // a) create the file if it does not exist
+			.append(true) // b) append a line to it
+			.open(&self.todo_path) else { err!{ Could not open a todo_file } };
 
-    // This one is for yall, dmenu chads <3
-    pub fn raw(&self, arg: &[String]) {
-        if arg.len() > 1 {
-            eprintln!("todo raw takes only 1 argument, not {}", arg.len())
-        } else if arg.is_empty() {
-            eprintln!("todo raw takes 1 argument (done/todo)");
-        } else {
-            let handle = io::stdout().lock();
-            // Buffered writer for stdout stream
-            let mut writer = BufWriter::new(handle);
-            let mut data = String::new();
-            // This loop will repeat itself for each task in TODO file
-            for task in self.todo.iter() {
-                if task.len() > 5 {
-                    // Saves the symbol of current task
-                    let symbol = &task[..4];
-                    // Saves a task without a symbol
-                    let task = &task[4..];
+		let mut buffer = BufWriter::new(todofile);
 
-                    // Checks if the current task is completed or not...
-                    if symbol == "[*] " && arg[0] == "done" {
-                        // DONE
-                        //If the task is completed, then it prints it with a strikethrough
-                        data = format!("{}\n", task);
-                    } else if symbol == "[ ] " && arg[0] == "todo" {
-                        // NOT DONE
+		for arg in args {
+			if arg.trim().is_empty() { continue };
+			err!{ format!("0{arg}\n").as_bytes() => buffer }
+		}
+		Ok(())
+	}
 
-                        //If the task is not completed yet, then it will print it as it is
-                        data = format!("{}\n", task);
-                    }
-                    writer
-                        .write_all(data.as_bytes())
-                        .expect("Failed to write to stdout");
-                }
-            }
-        }
-    }
-    // Adds a new todo
-    pub fn add(&self, args: &[String]) {
-        if args.is_empty() {
-            eprintln!("todo add takes at least 1 argument");
-            process::exit(1);
-        }
-        // Opens the TODO file with a permission to:
-        let todofile = OpenOptions::new()
-            .create(true) // a) create the file if it does not exist
-            .append(true) // b) append a line to it
-            .open(&self.todo_path)
-            .expect("Couldn't open the todofile");
+	// Removes a task
+	pub fn remove(&self, args: &[String]) -> Result<(), String> {
+		err!{ args }
+		// Opens the TODO file with a permission to:
+		let Ok(todofile) = OpenOptions::new()
+			.write(true) 
+			.truncate(true)
+			.open(&self.todo_path) else { err!{ Could not open the todo file } };
 
-        let mut buffer = BufWriter::new(todofile);
-        for arg in args {
-            if arg.trim().is_empty() {
-                continue;
-            }
+		let mut buffer = BufWriter::new(todofile);
 
-            // Appends a new task/s to the file
-            let line = format!("[ ] {}\n", arg);
-            buffer
-                .write_all(line.as_bytes())
-                .expect("unable to write data");
-        }
-    }
+		for task in self
+			.get_iter()			
+			.enumerate()
+			.filter_map(|(mut index, task)|
+				{
+					index += 1;
+					let (completed, _) = split(task)?;
+					if args
+						.iter()
+						.any(|text| (text == "done" && completed == '1') || text == &format!("{index}"))
+					{ None? };
+					Some(format!("{task}\n"))
+				}
+			)
+		{ err!{ task.as_bytes() => buffer } }
+		Ok(())
+	}
 
-    // Removes a task
-    pub fn remove(&self, args: &[String]) {
-        if args.is_empty() {
-            eprintln!("todo rm takes at least 1 argument");
-            process::exit(1);
-        }
-        // Opens the TODO file with a permission to:
-        let todofile = OpenOptions::new()
-            .write(true) // a) write
-            .truncate(true) // b) truncrate
-            .open(&self.todo_path)
-            .expect("Couldn't open the todo file");
+	fn remove_file(&self) -> Result<(), String> {
+		let Ok(_) = fs::remove_file(&self.todo_path) else { err!{ Error whilst removing the todo_file } };
+		Ok(())
+	}
 
-        let mut buffer = BufWriter::new(todofile);
+	// Clear todo by removing todo file
+	pub fn reset(&self) -> Result<(), String> {
+		if !self.no_backup { let Ok(_) = fs::copy(&self.todo_path, &self.todo_bak) else { err!{ Could not create a backup file } }; };
+		self.remove_file()?;
+		Ok(())
+	}
+	pub fn restore(&self) -> Result<(), String> {
+		let Ok(_) = fs::copy(&self.todo_bak, &self.todo_path) else { err!{ Could not restore the backup } };
+		Ok(())
+	}
 
-        for (pos, line) in self.todo.iter().enumerate() {
-            if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
-                continue;
-            }
-            if args.contains(&(pos + 1).to_string()) {
-                continue;
-            }
+	// Sorts done tasks
+	pub fn sort(&self) -> Result<(), String> {
+		// Creates a new empty string
+		let partition = self
+			.todo
+			.len() / 2;
 
-            let line = format!("{}\n", line);
+		let (todo, done) = self
+			.get_iter()
+			.filter_map(|task| split(task))
+			.fold((Vec::with_capacity(partition), Vec::with_capacity(partition)), |(mut todo, mut done), (completed, rest)|
+				{
+					match completed {
+						'0' => todo.push(format!("{completed}{rest}")),
+						'1' => done.push(format!("{completed}{rest}")),
+						_ => (),
+					}
+					(todo, done)
+				}
+			);
+		let newtodo = vec![todo, done]
+			.into_iter()
+			.flatten()
+			.collect::<Vec<String>>()
+			.join("\n");
 
-            buffer
-                .write_all(line.as_bytes())
-                .expect("unable to write data");
-        }
-    }
+		let Ok(mut todofile) = OpenOptions::new()
+			.write(true) // a) write
+			.truncate(true) // b) truncrate
+			.open(&self.todo_path) else { err!{ Could not open the todo file } };
 
-    fn remove_file(&self) {
-        match fs::remove_file(&self.todo_path) {
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("Error while clearing todo file: {}", e)
-            }
-        };
-    }
-    // Clear todo by removing todo file
-    pub fn reset(&self) {
-        if !self.no_backup {
-            match fs::copy(&self.todo_path, &self.todo_bak) {
-                Ok(_) => self.remove_file(),
-                Err(_) => {
-                    eprint!("Couldn't backup the todo file")
-                }
-            }
-        } else {
-            self.remove_file();
-        }
-    }
-    pub fn restore(&self) {
-        fs::copy(&self.todo_bak, &self.todo_path).expect("unable to restore the backup");
-    }
+		// Writes contents of a newtodo variable into the TODO file
+		err!{ newtodo.as_bytes() => todofile }
+		Ok(())
+	}
 
-    // Sorts done tasks
-    pub fn sort(&self) {
-        // Creates a new empty string
-        let newtodo: String;
+	pub fn done(&self, args: &[String]) -> Result<(), String> {
+		err!{ args }
 
-        let mut todo = String::new();
-        let mut done = String::new();
+		// Opens the TODO file with a permission to overwrite it
+		let Ok(mut todofile) = OpenOptions::new()
+			.write(true)
+			.open(&self.todo_path) else { err!{ Could not open the todofile } };
 
-        for line in self.todo.iter() {
-            if line.len() > 5 {
-                if &line[..4] == "[ ] " {
-                    let line = format!("{}\n", line);
-                    todo.push_str(&line);
-                } else if &line[..4] == "[*] " {
-                    let line = format!("{}\n", line);
-                    done.push_str(&line);
-                }
-            }
-        }
-
-        newtodo = format!("{}{}", &todo, &done);
-        // Opens the TODO file with a permission to:
-        let mut todofile = OpenOptions::new()
-            .write(true) // a) write
-            .truncate(true) // b) truncrate
-            .open(&self.todo_path)
-            .expect("Couldn't open the todo file");
-
-        // Writes contents of a newtodo variable into the TODO file
-        todofile
-            .write_all(newtodo.as_bytes())
-            .expect("Error while trying to save the todofile");
-    }
-
-    pub fn done(&self, args: &[String]) {
-        if args.is_empty() {
-            eprintln!("todo done takes at least 1 argument");
-            process::exit(1);
-        }
-
-        // Opens the TODO file with a permission to overwrite it
-        let todofile = OpenOptions::new()
-            .write(true)
-            .open(&self.todo_path)
-            .expect("Couldn't open the todofile");
-        let mut buffer = BufWriter::new(todofile);
-
-        for (pos, line) in self.todo.iter().enumerate() {
-            if line.len() > 5 {
-                if args.contains(&(pos + 1).to_string()) {
-                    if &line[..4] == "[ ] " {
-                        let line = format!("[*] {}\n", &line[4..]);
-                        buffer
-                            .write_all(line.as_bytes())
-                            .expect("unable to write data");
-                    } else if &line[..4] == "[*] " {
-                        let line = format!("[ ] {}\n", &line[4..]);
-                        buffer
-                            .write_all(line.as_bytes())
-                            .expect("unable to write data");
-                    }
-                } else if &line[..4] == "[ ] " || &line[..4] == "[*] " {
-                    let line = format!("{}\n", line);
-                    buffer
-                        .write_all(line.as_bytes())
-                        .expect("unable to write data");
-                }
-            }
-        }
-    }
+		for (completed, task) in self
+			.get_iter()
+			.enumerate()
+			.filter_map(|(mut index, task)|
+				{
+					index += 1;
+					let (completed, rest) = split(task)?;
+					Some(
+						(
+							match (args.contains(&format!("{index}")), completed) {
+								(true, '1') => '0',
+								(true, '0') => '1',
+								(_, other) => other,
+							},
+							rest
+						)
+					)
+				}
+			)
+		{ err!{ format!("{completed}{task}\n").as_bytes() => todofile } }
+		Ok(())
+	}
 }
 
-const TODO_HELP: &str = "Usage: todo [COMMAND] [ARGUMENTS]
-Todo is a super fast and simple tasks organizer written in rust
-Example: todo list
-Available commands:
-    - add [TASK/s]
-        adds new task/s
-        Example: todo add \"buy carrots\"
-    - list
-        lists all tasks
-        Example: todo list
-    - done [INDEX]
-        marks task as done
-        Example: todo done 2 3 (marks second and third tasks as completed)
-    - rm [INDEX]
-        removes a task
-        Example: todo rm 4
-    - reset
-        deletes all tasks
-    - restore 
-        restore recent backup after reset
-    - sort
-        sorts completed and uncompleted tasks
-        Example: todo sort
-    - raw [todo/done]
-        prints nothing but done/incompleted tasks in plain text, useful for scripting
-        Example: todo raw done
-";
-pub fn help() {
-    // For readability
-    println!("{}", TODO_HELP);
-}
+impl<T> Pipe for T { }
