@@ -161,11 +161,10 @@ impl Todo {
 						.trim()
 						.is_empty()
 					{ None? };
-					Some(format!("0{argument}"))
+					Some(format!("\n0{argument}"))
 				}
 			)
-			.collect::<Vec<String>>()
-			.join("\n");
+			.collect::<String>();
 		util!{ output.as_bytes() => todo_file }
 		Ok(())
 	}
@@ -183,10 +182,10 @@ impl Todo {
 			.filter_map(|(mut index, task)|
 				{
 					index += 1;
-					let (completed, _) = split(task)?;
+					let (completed, rest) = split(task)?;
 					if arguments
 						.iter()
-						.any(|text| (text == "done" && completed == '1') || text == buffer.format(index))
+						.any(|input| (input == "done" && completed == '1') || input == buffer.format(index) || input == &rest)
 					{ None? };
 					Some(format!("{task}"))
 				}
