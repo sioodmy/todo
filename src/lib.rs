@@ -15,11 +15,6 @@ pub struct Todo {
 }
 
 
-trait Pipe: Sized {
-	fn pipe<U>(self, function: fn(Self) -> U) -> U { function(self) }
-}
-
-
 macro_rules! err {
 	() => { concat!("Error@[", line!(), ',', column!(), "]: ") };
 	($bytes: expr => $file: ident) => {
@@ -77,11 +72,12 @@ impl Todo {
 			path
 		};
 
-		let todo_bak = match env::var("TODO_BAK_DIR") {
-			Ok(t) => t,
-			Err(_) => String::from("/tmp/todo.bak"),
-		}
-			.pipe(PathBuf::from);
+		let todo_bak = PathBuf::from(
+			match env::var("TODO_BAK_DIR") {
+				Ok(t) => t,
+				Err(_) => String::from("/tmp/todo.bak"),
+			}
+		);
 
 		let no_backup = env::var("TODO_NOBACKUP").is_ok();
 
@@ -293,5 +289,3 @@ impl Todo {
 		Ok(())
 	}
 }
-
-impl<T> Pipe for T { }
