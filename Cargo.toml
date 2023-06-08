@@ -8,8 +8,8 @@ description = "Simple todo cli program written in rust"
 
 [dependencies]
 itoa = "1"
-colored = "2"
-directories = "4.0"
+serde = "1"
+toml = "*"
 
 [profile.release]
 opt-level = 3
