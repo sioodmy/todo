@@ -3,8 +3,8 @@ use todo_bin::{ help, Todo };
 fn main() {
 	// SPEC:
 	//	Adding & Removing
-	//	Finishing (maybe also unfinishing(via undo command?))
+	//	Finishing (maybe also unfinishing(via undo command?)) (the same as Removing?)
 	//	serialized via toml
 	//	Descriptions
-	//	Backups
+	//	Listing (displaying to Stdout)
 }
