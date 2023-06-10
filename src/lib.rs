@@ -82,39 +82,43 @@ pub fn help() {
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Todo {
-	pub fn new() -> Result<Todo> {
-		let path = fs::read_dir(".")
-			.or_error(errors::READ)?
-			.filter(|item|
-				item
-					.as_ref()
-					.map(|item|
-						item
-							.file_type()
-							.map_or(false, |item| item.is_file())
-					)
-					.unwrap_or_default()
-			)
-			.find(|item|
-				item
-					.as_ref()
-					.map(|file|
-						{
-							let Ok(name) = file
-								.file_name()
-								.into_string() else { return false };
-							let name = name.to_lowercase();
-							name.starts_with("todo") && name.ends_with("toml")
-						}
-					)
-					.unwrap_or_default()
-			)
-			.map(|file|
-				file
-					.unwrap() /* unwrap safe */
-					.path()
-			)
-			.or_error(errors::OPEN)?;
+	pub fn new(path: Option<String>) -> Result<Todo> {
+		let path = path
+			.map(|text| PathBuf::from(text))
+			.unwrap_or(
+				fs::read_dir(".")
+				.or_error(errors::READ)?
+				.filter(|item|
+					item
+						.as_ref()
+						.map(|item|
+							item
+								.file_type()
+								.map_or(false, |item| item.is_file())
+						)
+						.unwrap_or_default()
+				)
+				.find(|item|
+					item
+						.as_ref()
+						.map(|file|
+							{
+								let Ok(name) = file
+									.file_name()
+									.into_string() else { return false };
+								let name = name.to_lowercase();
+								name.starts_with("todo") && name.ends_with("toml")
+							}
+						)
+						.unwrap_or_default()
+				)
+				.map(|file|
+					file
+						.unwrap() /* unwrap safe */
+						.path()
+				)
+				.or_error(errors::OPEN)?
+			);
 		Ok(
 			Todo {
 				list: List::new(path.clone(), None).unwrap_or_default(),

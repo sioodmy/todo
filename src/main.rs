@@ -9,7 +9,7 @@ fn main() -> Result<()> {
 	if arguments
 		.peek()
 		.is_none() { /* enter repl? */ help(); return Ok(()) };
-	let mut instance = Todo::new()?;
+	let mut instance = Todo::new(env::var("TODO").ok())?;
 	let command = arguments
 		.next()
 		.unwrap() /* unwrap safe */
