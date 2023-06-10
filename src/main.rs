@@ -1,6 +1,6 @@
 use std::env;
 use todo_bin::*;
-// use Command::*;
+use Command::*;
 
 fn main() -> Result<()> {
 	let mut arguments = env::args()
@@ -9,12 +9,30 @@ fn main() -> Result<()> {
 	if arguments
 		.peek()
 		.is_none() { /* enter repl? */ help(); return Ok(()) };
+	let mut instance = Todo::new()?;
 	let command = arguments
 		.next()
 		.unwrap() /* unwrap safe */
 		.parse::<Command>()?;
 	match command {
-		_ => { },
+		Add => instance.add_task(
+			Task::from(
+				(
+					arguments
+						.next()
+						.or_error("NO-TASK-PROVIDED")?,
+					arguments.next(),
+				)
+			)
+		),
+		Finish => instance.finish_task(
+			&arguments
+				.next()
+				.unwrap_or(String::from(' '))
+		),
+		List => instance.list(),
+		Clear => instance.clear_finished(),
+		Help => help(),
 	}
 	// SPEC:
 	//	Adding & Removing
@@ -22,5 +40,6 @@ fn main() -> Result<()> {
 	//	serialized via toml
 	//	Descriptions
 	//	Listing (displaying to Stdout)
+	instance.save()?;
 	Ok(())
 }
