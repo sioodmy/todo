@@ -22,6 +22,7 @@ fn main() -> Result<()> {
 						.next()
 						.or_error("NO-TASK-PROVIDED")?,
 					arguments.next(),
+					arguments.next(),
 				)
 			)
 		),
@@ -30,7 +31,7 @@ fn main() -> Result<()> {
 				.next()
 				.unwrap_or(String::from(' '))
 		),
-		List => instance.list(),
+		List => instance.query(arguments.next()),
 		Clear => instance.clear_finished(),
 		Help => help(),
 	}

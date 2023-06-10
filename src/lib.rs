@@ -36,6 +36,7 @@ pub struct Todo {
 pub struct Task {
 	name: String,
 	description: Option<String>,
+	board: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -137,22 +138,6 @@ impl Todo {
 	}
 }
 
-impl Task {
-	pub fn with_description(self, description: impl Display) -> Task {
-		Task {
-			name: self.name,
-			description: Some(format!("{description}")),
-		}
-	}
-
-	pub fn set_description(&mut self, new: impl Display) {
-		let Some(ref mut description) = self.description else { return };
-		*description = format!("{new}");
-	}
-
-	pub fn set_name(&mut self, new: impl Display) { self.name = format!("{new}") }
-}
-
 impl List {
 	pub fn new(path: PathBuf, adapter: Option<fn(&mut OpenOptions) -> &mut OpenOptions>) -> Result<Self> {
 		let mut file = adapter.unwrap_or(|options| options)(
@@ -195,24 +180,43 @@ impl List {
 			.clear()
 	}
 
-	pub fn list(&self) {
+	pub fn query(&self, query: Option<String>) {
+		let searcher = |task: &&Task| {
+			let Some(ref query) = query else { return true };
+			task
+				.board
+				.as_ref()
+				.map(|board| board == query)
+				.unwrap_or_default()
+		};
 		println!("TODO:");
 		for task in self
 			.tasks
 			.iter()
+			.filter(searcher)
 		{ println!("{task}") }
 		println!();
 		println!("FINISHED:");
 		for task in self
 			.finished
 			.iter()
+			.filter(searcher)
 		{ println!("{task}") }
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Display for Task {
 	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-		write!(formatter, "* {}", self.name)?;
+
+		write!(
+			formatter,
+			"[{:>13}] * {}",
+			self
+				.board
+				.as_ref()
+				.unwrap_or(&String::from("all")),
+			self.name
+		)?;
 		let Some(ref description) = self.description else { return Ok(()) };
 		write!(formatter, ": \"{}\"", description)
 	}
@@ -230,15 +234,9 @@ impl<T> Message for Option<T> {
 	fn or_error(self, text: impl Display) -> Result<T> { self.ok_or(format!("{text}")) }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-impl From<String> for Task {
-	fn from(name: String) -> Task {
-		Task { name, description: None }
-	}
-}
-
-impl From<(String, Option<String>)> for Task {
-	fn from(pair: (String, Option<String>)) -> Task {
-		Task { name: pair.0, description: pair.1 }
+impl From<(String, Option<String>, Option<String>)> for Task {
+	fn from((name, description, board): (String, Option<String>, Option<String>)) -> Task {
+		Task { name, description, board }
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
