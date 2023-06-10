@@ -35,12 +35,6 @@ fn main() -> Result<()> {
 		Clear => instance.clear_finished(),
 		Help => help(),
 	}
-	// SPEC:
-	//	Adding & Removing
-	//	Finishing (maybe also unfinishing(via undo command?)) (the same as Removing?)
-	//	serialized via toml
-	//	Descriptions
-	//	Listing (displaying to Stdout)
 	instance.save()?;
 	Ok(())
 }

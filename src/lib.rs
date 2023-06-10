@@ -68,17 +68,17 @@ pub trait Message {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 pub fn help() {
 	println!(
-		"Usage: todo [COMMAND] [ARGUMENTS]\n\
-		Todo is a super fast and simple tasks organizer written in rust\n\
+		"Usage: todo [COMMAND] [ARGUMENTS..]\n\n\
+		Todo is a super fast and simple tasks organizer written in rust\n\n\
 		Available commands:\n\
-		- add    [TASK...            ]: adds new task/s\n\
-		- list   [                   ]: lists all tasks\n\
-		- done   [INDEX/NAME...      ]: marks task as done\n\
-		- reset  [                   ]: deletes all tasks\n\
-		- restore[                   ]: restore recent backup\n\
-		- sort   [                   ]: sorts by status\n\
-		- raw    [todo/done          ]: prints selection as plain text"
-	); // TODO!
+		- add     <TASK-NAME> <DESCRIPTION?>  adds a task.\n\
+		- finish  <TASK-NAME>                 marks a task as finished.\n\
+		- list    <BOARD?>                    either list all or a specific board of tasks.\n\
+		- clear                               clears all the finished task.\n\
+		- help                                print out this help prompt.\n\n\
+		NOTE:\n\
+		the question mark inside the angle-brackets means that that argument is optional."
+	);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Todo {
