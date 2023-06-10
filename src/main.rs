@@ -2,6 +2,9 @@ use std::env;
 use todo_bin::*;
 use Command::*;
 
+// TODO:
+//     Add single command repeated argument capabilities wherever possible
+
 fn main() -> Result<()> {
 	let mut arguments = env::args()
 		.skip(1)
