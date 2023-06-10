@@ -84,25 +84,28 @@ impl Todo {
 	pub fn new() -> Result<Todo> {
 		let path = fs::read_dir(".")
 			.or_error(errors::READ)?
+			.filter(|item|
+				item
+					.as_ref()
+					.map(|item|
+						item
+							.file_type()
+							.map_or(false, |item| item.is_file())
+					)
+					.unwrap_or_default()
+			)
 			.find(|item|
 				item
 					.as_ref()
 					.map(|file|
-						Some(
-							file
-								.file_type()
-								.ok()?
-								.is_file()
-							&&
-							file
+						{
+							let Ok(name) = file
 								.file_name()
-								.into_string()
-								.ok()?
-								.to_lowercase()
-								.contains("todo")
-						)
+								.into_string() else { return false };
+							let name = name.to_lowercase();
+							name.starts_with("todo") && name.ends_with("toml")
+						}
 					)
-					.unwrap_or_default()
 					.unwrap_or_default()
 			)
 			.map(|file|
@@ -121,8 +124,8 @@ impl Todo {
 
 	pub fn save(self) -> Result<()> {
 		OpenOptions::new()
+			.write(true)
 			.truncate(true)
-			.create(true)
 			.open(self.path)
 			.or_error(errors::OPEN)?
 			.write_all(
@@ -193,13 +196,13 @@ impl List {
 	}
 
 	pub fn list(&self) {
-		println!("FINISHED");
+		println!("TODO:");
 		for task in self
 			.tasks
 			.iter()
 		{ println!("{task}") }
 		println!();
-		println!("FINISHED");
+		println!("FINISHED:");
 		for task in self
 			.finished
 			.iter()
@@ -210,11 +213,8 @@ impl List {
 impl Display for Task {
 	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
 		write!(formatter, "* {}", self.name)?;
-		{
-			let Some(ref description) = self.description else { return Ok(()) };
-			write!(formatter, ": {}", description)
-		}?;
-		write!(formatter, ".")
+		let Some(ref description) = self.description else { return Ok(()) };
+		write!(formatter, ": \"{}\"", description)
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -251,8 +251,8 @@ impl FromStr for Command {
 		[("add", Add), ("finish", Finish), ("list", List), ("clear", Clear), ("help", Help)]
 			.into_iter()
 			.find_map(|(command, variant)|
-				(0..command.len())
-					.any(|upper| &text == &command[..upper])
+				(1..=command.len())
+					.any(|upper| text.starts_with(&command[..upper]))
 					.then_some(variant)
 			)
 			.or_error(errors::PARSE)

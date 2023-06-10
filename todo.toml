@@ -1,0 +1,7 @@
+[[tasks]]
+name = "foo"
+description = "bar"
+
+[[finished]]
+name = "baz"
+description = "qux"
