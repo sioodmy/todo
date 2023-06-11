@@ -4,6 +4,7 @@ use std::{
 	fmt::{ self, Display },
 	io::{ Read, Write },
 	str::FromStr,
+	string::ToString,
 	ops::{ Deref, DerefMut },
 	path::PathBuf,
 	result,
@@ -58,6 +59,7 @@ pub enum Command { // map of public functions intended to be used as commands.
 	List,
 	Clear,
 	Raw,
+	New,
 	#[default] Help,
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,6 +79,7 @@ pub fn help() {
 		- list    <BOARD?>                    either list all or a specific board of tasks.\n\
 		- clear                               clears all the finished task.\n\
 		- raw                                 list all with a raw formatting.\n\
+		- new     <FILE-NAME?>                create a todo file in the current directory.\n\
 		- help                                print out this help prompt.\n\n\
 		NOTE:\n\
 		the question mark inside the angle-brackets means that that argument is optional."
@@ -126,6 +129,15 @@ impl Todo {
 				path
 			}
 		)
+	}
+
+	pub fn create(path: Option<String>) -> Result<()> {
+		OpenOptions::new()
+			.write(true)
+			.create_new(true)
+			.open(path.unwrap_or(String::from("todo.toml")))
+			.or_error(errors::OPEN)?;
+		Ok(())
 	}
 
 	pub fn save(self) -> Result<()> {
@@ -237,6 +249,13 @@ impl List {
 		print(&self.finished, true);
 	}
 }
+
+impl Command {
+	fn get_pair(self) -> (Self, String) {
+		let string = self.to_string();
+		(self, string)
+	}
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Display for Task {
 	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -273,15 +292,20 @@ impl From<(String, Option<String>, Option<String>)> for Task {
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+impl ToString for Command {
+	fn to_string(&self) -> String { format!("{self:?}").to_lowercase() }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl FromStr for Command {
 	type Err = String;
 
 	fn from_str(text: &str) -> Result<Self> {
 		use Command::*;
 		let text = text.to_lowercase();
-		[("add", Add), ("finish", Finish), ("list", List), ("clear", Clear), ("raw", Raw), ("help", Help)]
+		[Add, Finish, List, Clear, Raw, New, Help]
 			.into_iter()
-			.find_map(|(command, variant)|
+			.map(|variant| variant.get_pair())
+			.find_map(|(variant, command)|
 				(1..=command.len())
 					.any(|upper| text.starts_with(&command[..upper]))
 					.then_some(variant)

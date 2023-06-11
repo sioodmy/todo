@@ -9,11 +9,15 @@ fn main() -> Result<()> {
 	if arguments
 		.peek()
 		.is_none() { /* enter repl? */ help(); return Ok(()) };
-	let mut instance = Todo::new(env::var("TODO").ok())?;
 	let command = arguments
 		.next()
 		.unwrap() /* unwrap safe */
 		.parse::<Command>()?;
+	if let New = command {
+		Todo::create(arguments.next())?;
+		return Ok(())
+	}
+	let mut instance = Todo::new(env::var("TODO").ok())?;
 	match command {
 		Add => instance.add_task(
 			Task::from(
@@ -36,6 +40,7 @@ fn main() -> Result<()> {
 		Clear => instance.clear_finished(),
 		Raw => instance.all_raw(),
 		Help => help(),
+		_ => unimplemented!(),
 	}
 	instance.save()?;
 	Ok(())
