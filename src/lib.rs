@@ -98,8 +98,8 @@ impl Todo {
 						)
 						.unwrap_or_default()
 				)
-				.find(|item|
-					item
+				.find(|file|
+					file
 						.as_ref()
 						.map(|file|
 							{
