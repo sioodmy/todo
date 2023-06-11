@@ -20,7 +20,7 @@ fn main() -> Result<()> {
 				(
 					arguments
 						.next()
-						.or_error("NO-TASK-PROVIDED")?,
+						.or_error("NO TASK PROVIDED ")?,
 					arguments.next(),
 					arguments.next(),
 				)
@@ -34,6 +34,7 @@ fn main() -> Result<()> {
 			),
 		List => instance.query(arguments.next()),
 		Clear => instance.clear_finished(),
+		Raw => instance.all_raw(),
 		Help => help(),
 	}
 	instance.save()?;

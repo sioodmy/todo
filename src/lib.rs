@@ -57,6 +57,7 @@ pub enum Command { // map of public functions intended to be used as commands.
 	Finish,
 	List,
 	Clear,
+	Raw,
 	#[default] Help,
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,6 +76,7 @@ pub fn help() {
 		- finish  <TASK-NAME>                 marks a task as finished.\n\
 		- list    <BOARD?>                    either list all or a specific board of tasks.\n\
 		- clear                               clears all the finished task.\n\
+		- raw                                 list all with a raw formatting.\n\
 		- help                                print out this help prompt.\n\n\
 		NOTE:\n\
 		the question mark inside the angle-brackets means that that argument is optional."
@@ -84,44 +86,44 @@ pub fn help() {
 impl Todo {
 	pub fn new(path: Option<String>) -> Result<Todo> {
 		let path = path
-			.map(|text| PathBuf::from(text))
-			.unwrap_or(
-				fs::read_dir(".")
-				.or_error(errors::READ)?
-				.filter(|item|
-					item
-						.as_ref()
-						.map(|item|
-							item
-								.file_type()
-								.map_or(false, |item| item.is_file())
-						)
-						.unwrap_or_default()
-				)
-				.find(|file|
-					file
-						.as_ref()
-						.map(|file|
-							{
-								let Ok(name) = file
-									.file_name()
-									.into_string() else { return false };
-								let name = name.to_lowercase();
-								name.starts_with("todo") && name.ends_with("toml")
-							}
-						)
-						.unwrap_or_default()
-				)
-				.map(|file|
-					file
-						.unwrap() /* unwrap safe */
-						.path()
-				)
-				.or_error(errors::OPEN)?
-			);
+			.map_or_else(
+				|| // needed due to ambiguous type case.
+					Result::Ok(
+						fs::read_dir(".")
+							.or_error(errors::READ)?
+							.filter(|item|
+								item
+									.as_ref()
+									.map(|item|
+										item
+											.file_type()
+											.map_or(false, |item| item.is_file())
+									)
+									.unwrap_or_default()
+							)
+							.find(|file|
+								file
+									.as_ref()
+									.map(|file|
+										{
+											let Ok(name) = file
+												.file_name()
+												.into_string() else { return false };
+											let name = name.to_lowercase();
+											name.starts_with("todo") && name.ends_with("toml")
+										},
+									)
+									.unwrap_or_default()
+							)
+							.or_error(errors::OPEN)?
+							.unwrap() /* unwrap safe */
+							.path()
+					),
+				|text| Ok(PathBuf::from(text))
+			)?;
 		Ok(
 			Todo {
-				list: List::new(path.clone(), None).unwrap_or_default(),
+				list: List::new(path.clone()).unwrap_or_default(),
 				path
 			}
 		)
@@ -143,11 +145,9 @@ impl Todo {
 }
 
 impl List {
-	pub fn new(path: PathBuf, adapter: Option<fn(&mut OpenOptions) -> &mut OpenOptions>) -> Result<Self> {
-		let mut file = adapter.unwrap_or(|options| options)(
-			OpenOptions::new()
-				.read(true)
-		)
+	pub fn new(path: PathBuf) -> Result<Self> {
+		let mut file = OpenOptions::new()
+			.read(true)
 			.open(path)
 			.or_error(errors::OPEN)?;
 		let buffer = &mut String::with_capacity(255);
@@ -204,6 +204,39 @@ impl List {
 		println!("\nFINISHED:");
 		select(&self.finished)
 	}
+
+	pub fn all_raw(&self) {
+		let board_default = String::from("all");
+		let print = |tasks: &Vec<Task>, finished: bool| {
+			tasks
+				.iter()
+				.for_each(|task|
+					println!(
+						"{}_{}.{}{}",
+						if finished { String::from("DONE") } else { String::from("TODO") },
+						task
+							.board
+							.as_ref()
+							.unwrap_or(&board_default),
+						task.name,
+						if task
+							.description
+							.is_some()
+						{
+							format!(
+								":{}",
+								task
+									.description
+									.as_ref()
+									.unwrap() /* unwrap safe */
+							)
+						} else { String::new() }
+					)
+				)
+		};
+		print(&self.tasks, false);
+		print(&self.finished, true);
+	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Display for Task {
@@ -247,7 +280,7 @@ impl FromStr for Command {
 	fn from_str(text: &str) -> Result<Self> {
 		use Command::*;
 		let text = text.to_lowercase();
-		[("add", Add), ("finish", Finish), ("list", List), ("clear", Clear), ("help", Help)]
+		[("add", Add), ("finish", Finish), ("list", List), ("clear", Clear), ("raw", Raw), ("help", Help)]
 			.into_iter()
 			.find_map(|(command, variant)|
 				(1..=command.len())
