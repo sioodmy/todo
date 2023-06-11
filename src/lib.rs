@@ -84,6 +84,14 @@ pub fn help() {
 		the question mark inside the angle-brackets means that that argument is optional."
 	);
 }
+
+fn ref_map<T, U, E, F>(resulting: &result::Result<T, E>, map: impl FnOnce(&T) -> result::Result<U, F>) -> Option<U> {
+	resulting
+		.as_ref()
+		.ok()
+		.map(|item| map(item).ok())
+		.flatten()
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Todo {
 	pub fn new(path: Option<String>) -> Result<Todo> {
@@ -92,28 +100,22 @@ impl Todo {
 				fs::read_dir(".")
 					.or_error(errors::READ)?
 					.filter(|item|
-						item
-							.as_ref()
-							.map(|item|
-								item
-									.file_type()
-									.map_or(false, |item| item.is_file())
-							)
-							.unwrap_or_default()
+						ref_map(
+							&item,
+							|item| item.file_type(),
+						)
+							.map_or(false, |item| item.is_file())
 					)
 					.find(|file|
-						file
-							.as_ref()
-							.map(|file|
-								{
-									let Ok(name) = file
-										.file_name()
-										.into_string() else { return false };
-									let name = name.to_lowercase();
-									name.starts_with("todo") && name.ends_with("toml")
-								},
-							)
-							.unwrap_or_default()
+						ref_map(
+							&file,
+							|file|
+								file
+									.file_name()
+									.into_string()
+						)
+							.map(|name| name.to_lowercase())
+							.is_some_and(|name| name.contains("todo") && name.ends_with("toml"))
 					)
 					.or_error(errors::OPEN)?
 					.unwrap() /* unwrap safe */
