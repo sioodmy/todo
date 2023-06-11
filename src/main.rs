@@ -29,11 +29,12 @@ fn main() -> Result<()> {
 				)
 			)
 		),
-		Finish => instance.finish_task(
-			&arguments
-				.next()
-				.unwrap_or(String::from(' '))
-		),
+		Finish => instance
+			.finish_task(
+				arguments
+					.next()
+					.unwrap_or(String::from(' '))
+			),
 		List => instance.query(arguments.next()),
 		Clear => instance.clear_finished(),
 		Help => help(),

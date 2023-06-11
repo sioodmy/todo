@@ -158,11 +158,11 @@ impl List {
 			.or_error(errors::PARSE)
 	}
 
-	pub fn finish_task(&mut self, identifier: &str) {
+	pub fn finish_task(&mut self, identifier: String) {
 		let Some(position) = self
 			.tasks
 			.iter()
-			.position(|Task { ref name, .. }| name == identifier) else { return };
+			.position(|Task { name, .. }| *name == identifier) else { return };
 		self
 			.finished
 			.push(
