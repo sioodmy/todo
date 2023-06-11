@@ -185,27 +185,24 @@ impl List {
 	}
 
 	pub fn query(&self, query: Option<String>) {
-		let searcher = |task: &&Task| {
-			let Some(ref query) = query else { return true };
-			task
-				.board
-				.as_ref()
-				.map(|board| board == query)
-				.unwrap_or_default()
-		};
+		let select = |pool: &Vec<Task>|
+			pool
+				.iter()
+				.filter(|task|
+					{
+						let Some(ref query) = query else { return true };
+						task
+							.board
+							.as_ref()
+							.map(|board| board == query)
+							.unwrap_or_default()
+					}
+				)
+				.for_each(|task| println!("{task}"));
 		println!("TODO:");
-		for task in self
-			.tasks
-			.iter()
-			.filter(searcher)
-		{ println!("{task}") }
-		println!();
-		println!("FINISHED:");
-		for task in self
-			.finished
-			.iter()
-			.filter(searcher)
-		{ println!("{task}") }
+		select(&self.tasks);
+		println!("\nFINISHED:");
+		select(&self.finished)
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
