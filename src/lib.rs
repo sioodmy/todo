@@ -212,7 +212,7 @@ impl List {
 				.iter()
 				.for_each(|task|
 					println!(
-						"{}_{}.{}{}",
+						"{}_{}/{}{}",
 						if finished { String::from("DONE") } else { String::from("TODO") },
 						task
 							.board
