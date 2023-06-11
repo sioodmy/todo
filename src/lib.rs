@@ -201,14 +201,11 @@ impl List {
 			pool
 				.iter()
 				.filter(|task|
-					{
-						let Some(ref query) = query else { return true };
-						task
-							.board
-							.as_ref()
-							.map(|board| board == query)
-							.unwrap_or_default()
-					}
+					task
+						.board
+						.as_ref()
+						.map(|board| Some(board) == query.as_ref())
+						.unwrap_or_default()
 				)
 				.for_each(|task| println!("{task}"));
 		println!("TODO:");
@@ -218,34 +215,20 @@ impl List {
 	}
 
 	pub fn all_raw(&self) {
-		let board_default = String::from("all");
-		let print = |tasks: &Vec<Task>, finished: bool| {
-			tasks
-				.iter()
-				.for_each(|task|
-					println!(
-						"{}@{}/{}{}",
-						if finished { String::from("DONE") } else { String::from("TODO") },
-						task
-							.board
-							.as_ref()
-							.unwrap_or(&board_default),
-						task.name,
-						if task
-							.description
-							.is_some()
-						{
-							format!(
-								":{}",
-								task
-									.description
-									.as_ref()
-									.unwrap() /* unwrap safe */
-							)
-						} else { String::new() }
-					)
-				)
-		};
+		let print = |tasks: &Vec<Task>, finished: bool|
+			for task in tasks.iter() {
+				let state = if finished { "DONE" } else { "TODO" };
+				let board = task
+					.board
+					.clone()
+					.unwrap_or(String::from("all"));
+				let description = task
+					.description
+					.as_ref()
+					.map(|task| format!(":{task}"))
+					.unwrap_or_default();
+				println!("{state}@{board}/{}{description}", task.name,)
+			};
 		print(&self.tasks, false);
 		print(&self.finished, true);
 	}
