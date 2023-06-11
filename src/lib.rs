@@ -4,7 +4,6 @@ use std::{
 	fmt::{ self, Display },
 	io::{ Read, Write },
 	str::FromStr,
-	string::ToString,
 	ops::{ Deref, DerefMut },
 	path::PathBuf,
 	result,
@@ -249,13 +248,6 @@ impl List {
 		print(&self.finished, true);
 	}
 }
-
-impl Command {
-	fn get_pair(self) -> (Self, String) {
-		let string = self.to_string();
-		(self, string)
-	}
-}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Display for Task {
 	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -292,10 +284,6 @@ impl From<(String, Option<String>, Option<String>)> for Task {
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-impl ToString for Command {
-	fn to_string(&self) -> String { format!("{self:?}").to_lowercase() }
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl FromStr for Command {
 	type Err = String;
 
@@ -304,10 +292,10 @@ impl FromStr for Command {
 		let text = text.to_lowercase();
 		[Add, Finish, List, Clear, Raw, New, Help]
 			.into_iter()
-			.map(|variant| variant.get_pair())
-			.find_map(|(variant, command)|
-				(1..=command.len())
-					.any(|upper| text.starts_with(&command[..upper]))
+			.map(|variant| (format!("{variant:?}").to_lowercase(), variant))
+			.find_map(|(reference, variant)|
+				(1..=reference.len())
+					.any(|upper| text.starts_with(&reference[..upper]))
 					.then_some(variant)
 			)
 			.or_error(errors::PARSE)
