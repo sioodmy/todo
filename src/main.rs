@@ -2,7 +2,7 @@ use std::env;
 use todo_bin::*;
 use Command::*;
 
-fn main() -> Result<()> {
+fn main() -> End<()> {
 	let mut arguments = env::args()
 		.skip(1)
 		.peekable(); 

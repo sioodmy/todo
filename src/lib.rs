@@ -6,7 +6,6 @@ use std::{
 	str::FromStr,
 	ops::{ Deref, DerefMut },
 	path::PathBuf,
-	result,
 };
 use serde::{ Deserialize, Serialize };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,7 +20,7 @@ mod errors {
 	// TODO: more descriptive errors.
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-pub type Result<T> = result::Result<T, String>;
+pub type End<T> = Result<T, String>;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 pub struct Todo {
 	pub list: List,
@@ -65,7 +64,7 @@ pub enum Command { // map of public functions intended to be used as commands.
 pub trait Message {
 	type Inner;
 
-	fn or_error(self, text: impl Display) -> Result<Self::Inner>;
+	fn or_error(self, text: impl Display) -> End<Self::Inner>;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 pub fn help() {
@@ -85,7 +84,7 @@ pub fn help() {
 	);
 }
 
-fn ref_map<T, U, E, F>(resulting: &result::Result<T, E>, map: impl FnOnce(&T) -> result::Result<U, F>) -> Option<U> {
+fn ref_map<T, U, E, F>(resulting: &Result<T, E>, map: impl FnOnce(&T) -> Result<U, F>) -> Option<U> {
 	resulting
 		.as_ref()
 		.ok()
@@ -94,8 +93,8 @@ fn ref_map<T, U, E, F>(resulting: &result::Result<T, E>, map: impl FnOnce(&T) ->
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Todo {
-	pub fn new(path: Option<String>) -> Result<Todo> {
-		let error = || -> Result<PathBuf> {
+	pub fn new(path: Option<String>) -> End<Todo> {
+		let error = || -> End<PathBuf> {
 			Ok(
 				fs::read_dir(".")
 					.or_error(errors::READ)?
@@ -132,7 +131,7 @@ impl Todo {
 		)
 	}
 
-	pub fn create(path: Option<String>) -> Result<()> {
+	pub fn create(path: Option<String>) -> End<()> {
 		OpenOptions::new()
 			.write(true)
 			.create_new(true)
@@ -141,7 +140,7 @@ impl Todo {
 		Ok(())
 	}
 
-	pub fn save(self) -> Result<()> {
+	pub fn save(self) -> End<()> {
 		OpenOptions::new()
 			.write(true)
 			.truncate(true)
@@ -157,7 +156,7 @@ impl Todo {
 }
 
 impl List {
-	pub fn new(path: PathBuf) -> Result<Self> {
+	pub fn new(path: PathBuf) -> End<Self> {
 		let mut file = OpenOptions::new()
 			.read(true)
 			.open(path)
@@ -208,10 +207,13 @@ impl List {
 						.unwrap_or_default()
 				)
 				.for_each(|task| println!("{task}"));
+		let Self { ref tasks, ref finished } = self;
+		if tasks.is_empty() { return }
 		println!("TODO:");
-		select(&self.tasks);
+		select(tasks);
+		if finished.is_empty() { return }
 		println!("\nFINISHED:");
-		select(&self.finished)
+		select(finished)
 	}
 
 	pub fn all_raw(&self) {
@@ -251,16 +253,16 @@ impl Display for Task {
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-impl<T, E> Message for result::Result<T, E> {
+impl<T, E> Message for Result<T, E> {
 	type Inner = T;
 
-	fn or_error(self, text: impl Display) -> Result<T> { self.map_err(|_| format!("{text}")) }
+	fn or_error(self, text: impl Display) -> End<T> { self.map_err(|_| format!("{text}")) }
 }
 
 impl<T> Message for Option<T> {
 	type Inner = T;
 
-	fn or_error(self, text: impl Display) -> Result<T> { self.ok_or(format!("{text}")) }
+	fn or_error(self, text: impl Display) -> End<T> { self.ok_or(format!("{text}")) }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl From<(String, Option<String>, Option<String>)> for Task {
@@ -272,7 +274,7 @@ impl From<(String, Option<String>, Option<String>)> for Task {
 impl FromStr for Command {
 	type Err = String;
 
-	fn from_str(text: &str) -> Result<Self> {
+	fn from_str(text: &str) -> End<Self> {
 		use Command::*;
 		let text = text.to_lowercase();
 		[Add, Finish, List, Clear, Raw, New, Help]
