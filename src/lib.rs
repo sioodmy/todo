@@ -22,7 +22,6 @@ mod errors {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 pub type End<T> = Result<T, String>;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// TODO: add board struct.
 pub struct Todo {
 	pub list: List,
 	pub path: PathBuf,
@@ -35,8 +34,8 @@ pub struct Todo {
 #[derive(Default)]
 pub struct Task {
 	name: String,
-	description: Option<String>,
-	board: Option<String>,
+	group: String,
+	purpose: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -45,8 +44,8 @@ pub struct Task {
 #[derive(Clone)]
 #[derive(Default)]
 pub struct List {
-	tasks: Vec<Task>,
-	finished: Vec<Task>,
+	todo: Vec<Task>,
+	done: Vec<Task>,
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug)]
@@ -73,13 +72,13 @@ pub fn help() {
 		"Usage: todo [COMMAND] [ARGUMENTS..]\n\n\
 		Todo is a super fast and simple tasks organizer written in rust\n\n\
 		Available commands:\n\
-		- add     <TASK-NAME> <DESCRIPTION?>  adds a task.\n\
-		- finish  <TASK-NAME> <BOARD?>        marks a task as finished.\n\
-		- list    <BOARD?>                    either list all or a specific board of tasks.\n\
-		- clear                               clears all the finished task.\n\
-		- raw                                 list all with a raw formatting.\n\
-		- new     <FILE-NAME?>                create a todo file in the current directory.\n\
-		- help                                print out this help prompt.\n\n\
+		- add     <TASK-NAME> <GROUP?> <PURPOSE?>  adds a task.\n\
+		- finish  <TASK-NAME> <GROUP?>             marks a task as finished.\n\
+		- list    <GROUP?>                         either list all or a specific board of tasks.\n\
+		- clear                                    clears all the finished task.\n\
+		- raw                                      list all with a raw formatting.\n\
+		- new     <FILE-NAME?>                     create a todo file in the current directory.\n\
+		- help                                     print out this help prompt.\n\n\
 		NOTE:\n\
 		the question mark inside the angle-brackets means that that argument is optional."
 	);
@@ -91,6 +90,12 @@ fn ref_map<T, U, E, F>(resulting: &Result<T, E>, map: impl FnOnce(&T) -> Result<
 		.ok()
 		.map(|item| map(item).ok())
 		.flatten()
+}
+
+fn is_query(group: &String, query: &Option<String>) -> bool {
+	query
+		.as_ref()
+		.map_or(true, |query| query == group)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Todo {
@@ -166,35 +171,32 @@ impl List {
 		file
 			.read_to_string(buffer)
 			.or_error(errors::READ)?;
-		toml::from_str(&buffer)
-			.or_error(errors::PARSE)
+		toml::from_str(&buffer).or_error(errors::PARSE)
 	}
 
-	pub fn finish_task(&mut self, identifier: String, group: Option<String>) {
+	pub fn finish_task(&mut self, identifier: String, query: Option<String>) {
 		let Some(position) = self
-			.tasks
+			.todo
 			.iter()
-			.position(|Task { name, board, .. }|
-				*name == identifier && board == &group
-			) else { return };
+			.position(|Task { name, group, .. }| *name == identifier && is_query(&group, &query)) else { return };
 		self
-			.finished
+			.done
 			.push(
 				self
-					.tasks
+					.todo
 					.remove(position) // probably safe
 			);
 	}
 
 	pub fn add_task(&mut self, task: Task) {
 		self
-			.tasks
+			.todo
 			.push(task)
 	}
 
 	pub fn clear_finished(&mut self) {
 		self
-			.finished
+			.done
 			.clear()
 	}
 
@@ -202,40 +204,33 @@ impl List {
 		let select = |pool: &Vec<Task>|
 			pool
 				.iter()
-				.filter(|task|
-					task
-						.board
-						.as_ref()
-						.map(|board| Some(board) == query.as_ref())
-						.unwrap_or_default()
-				)
+				.filter(|task| is_query(&task.group, &query))
 				.for_each(|task| println!("{task}"));
-		let Self { ref tasks, ref finished } = self;
-		if tasks.is_empty() { return }
-		println!("TODO:");
-		select(tasks);
-		if finished.is_empty() { return }
-		println!("\nFINISHED:");
-		select(finished)
+		let Self { ref todo, ref done } = self;
+		if !todo.is_empty() {
+			println!("TODO:");
+			select(todo)
+		}
+		if !todo.is_empty() && !done.is_empty() { println!() }
+		if !done.is_empty() {
+			println!("DONE:");
+			select(done)
+		}
 	}
 
 	pub fn all_raw(&self) {
 		let print = |tasks: &Vec<Task>, finished: bool|
 			for task in tasks.iter() {
 				let state = if finished { "DONE" } else { "TODO" };
-				let board = task
-					.board
-					.clone()
-					.unwrap_or(String::from("all"));
 				let description = task
-					.description
+					.purpose
 					.as_ref()
 					.map(|task| format!(":{task}"))
 					.unwrap_or_default();
-				println!("{state}@{board}/{}{description}", task.name,)
+				println!("{state}@{}/{}{description}", task.group, task.name,)
 			};
-		print(&self.tasks, false);
-		print(&self.finished, true);
+		print(&self.todo, false);
+		print(&self.done, true);
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,13 +240,10 @@ impl Display for Task {
 		write!(
 			formatter,
 			"[{:>13}] * {}",
-			self
-				.board
-				.as_ref()
-				.unwrap_or(&String::from("all")),
-			self.name
+			self.group,
+			self.name,
 		)?;
-		let Some(ref description) = self.description else { return Ok(()) };
+		let Some(ref description) = self.purpose else { return Ok(()) };
 		write!(formatter, ": \"{}\"", description)
 	}
 }
@@ -269,8 +261,8 @@ impl<T> Message for Option<T> {
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl From<(String, Option<String>, Option<String>)> for Task {
-	fn from((name, description, board): (String, Option<String>, Option<String>)) -> Task {
-		Task { name, description, board }
+	fn from((name, group, purpose): (String, Option<String>, Option<String>)) -> Task {
+		Task { name, group: group.unwrap_or(String::from("global")), purpose }
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

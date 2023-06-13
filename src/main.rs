@@ -34,7 +34,7 @@ fn main() -> End<()> {
 					.unwrap_or(String::from(' ')),
 				arguments.next(),
 			),
-		Board => instance.query(arguments.next()),
+		List => instance.query(arguments.next()),
 		Clear => instance.clear_finished(),
 		Raw => instance.all_raw(),
 		Help => help(),

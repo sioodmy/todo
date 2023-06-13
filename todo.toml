@@ -1,5 +1,6 @@
-finished = []
+todo = []
 
-[[tasks]]
-name = "foo"
-description = "bar"
+[[done]]
+name = "buy eggs"
+group = "family"
+purpose = "for a cake"
