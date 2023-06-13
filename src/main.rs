@@ -13,10 +13,7 @@ fn main() -> End<()> {
 		.next()
 		.unwrap() /* unwrap safe */
 		.parse::<Command>()?;
-	if let New = command {
-		Todo::create(arguments.next())?;
-		return Ok(())
-	}
+	if let New = command { return Todo::create(arguments.next()) }
 	let mut instance = Todo::new(env::var("TODO").ok())?;
 	match command {
 		Add => instance.add_task(
@@ -34,9 +31,10 @@ fn main() -> End<()> {
 			.finish_task(
 				arguments
 					.next()
-					.unwrap_or(String::from(' '))
+					.unwrap_or(String::from(' ')),
+				arguments.next(),
 			),
-		List => instance.query(arguments.next()),
+		Board => instance.query(arguments.next()),
 		Clear => instance.clear_finished(),
 		Raw => instance.all_raw(),
 		Help => help(),

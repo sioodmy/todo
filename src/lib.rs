@@ -74,7 +74,7 @@ pub fn help() {
 		Todo is a super fast and simple tasks organizer written in rust\n\n\
 		Available commands:\n\
 		- add     <TASK-NAME> <DESCRIPTION?>  adds a task.\n\
-		- finish  <TASK-NAME>                 marks a task as finished.\n\
+		- finish  <TASK-NAME> <BOARD?>        marks a task as finished.\n\
 		- list    <BOARD?>                    either list all or a specific board of tasks.\n\
 		- clear                               clears all the finished task.\n\
 		- raw                                 list all with a raw formatting.\n\
@@ -170,11 +170,13 @@ impl List {
 			.or_error(errors::PARSE)
 	}
 
-	pub fn finish_task(&mut self, identifier: String) {
+	pub fn finish_task(&mut self, identifier: String, group: Option<String>) {
 		let Some(position) = self
 			.tasks
 			.iter()
-			.position(|Task { name, .. }| *name == identifier) else { return };
+			.position(|Task { name, board, .. }|
+				*name == identifier && board == &group
+			) else { return };
 		self
 			.finished
 			.push(
