@@ -16,7 +16,8 @@ mod errors {
 	msg!{ PARSE = PARSE ERROR }
 	msg!{ READ = READING FAILED }
 	msg!{ OPEN = OPENING FAILED }
-	msg!{ SAVE = SAVING FAILD }
+	msg!{ SAVE = SAVING FAILED }
+	msg!{ FIND = FILE NOT FOUND }
 	// TODO: more descriptive errors.
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +123,7 @@ impl Todo {
 							.map(|name| name.to_lowercase())
 							.is_some_and(|name| name.contains("todo") && name.ends_with("toml"))
 					)
-					.or_error(errors::OPEN)?
+					.or_error(errors::FIND)?
 					.unwrap() /* unwrap safe */
 					.path()
 		
