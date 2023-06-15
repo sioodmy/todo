@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 use std::{
-	fs::{ self, OpenOptions },
+	fs::{ self, File, OpenOptions },
 	fmt::{ self, Display },
 	io::{ Read, Write },
 	str::FromStr,
@@ -164,10 +164,7 @@ impl Todo {
 
 impl List {
 	pub fn new(path: PathBuf) -> End<Self> {
-		let mut file = OpenOptions::new()
-			.read(true)
-			.open(path)
-			.or_error(errors::OPEN)?;
+		let mut file = File::open(path).or_error(errors::OPEN)?;
 		let buffer = &mut String::with_capacity(255);
 		file
 			.read_to_string(buffer)
