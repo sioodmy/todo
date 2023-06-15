@@ -273,13 +273,12 @@ impl FromStr for Command {
 	fn from_str(text: &str) -> End<Self> {
 		use Command::*;
 		let text = text.to_lowercase();
-		let length = text.len();
 		[Add, Finish, List, Clear, Raw, New, Help]
 			.into_iter()
 			.map(|variant| (format!("{variant:?}").to_lowercase(), variant))
 			.find_map(|(reference, variant)|
 				(1..=reference.len())
-					.any(|upper| text.starts_with(&reference[..upper]) && length == upper)
+					.any(|upper| text == &reference[..upper])
 					.then_some(variant)
 			)
 			.or_error(errors::PARSE)
