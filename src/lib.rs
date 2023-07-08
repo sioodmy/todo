@@ -127,15 +127,15 @@ pub fn help() {
 	println!(
 		"Usage: todo [COMMAND] [ARGUMENTS..]\n\n\
 		Todo is a super fast and simple tasks organizer written in rust\n\n\
-		Available commands:\n\
-		- add     <TASK-NAME> <GROUP?> <PURPOSE?>  adds a task.\n\
-		- finish  <TASK-NAME> <GROUP?>             marks a task as finished.\n\
-		- list    <GROUP?>                         either list all or a specific board of tasks.\n\
-		- clear                                    clears all the finished task.\n\
-		- raw                                      list all with a raw formatting.\n\
-		- new     <FILE-NAME?>                     create a todo file in the current directory.\n\
-		- help                                     print out this help prompt.\n\n\
-		NOTE:\n\
+		Available commands:\n  \
+		add     <TASK-NAME> <GROUP?> <PURPOSE?>  adds a task.\n  \
+		finish  <TASK-NAME> <GROUP?>             marks a task as finished.\n  \
+		list    <GROUP?>                         either list all or a specific board of tasks.\n  \
+		clear                                    clears all the finished task.\n  \
+		raw                                      list all with a raw formatting.\n  \
+		new     <FILE-NAME?>                     create a todo file in the current directory.\n  \
+		help                                     print out this help prompt.\n\n\
+		NOTE:\n  \
 		the question mark inside the angle-brackets means that that argument is optional."
 	);
 }
