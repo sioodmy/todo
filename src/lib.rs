@@ -259,7 +259,7 @@ impl List {
 				.iter()
 				.filter(|task| is_query(&task.group, &query))
 				.for_each(|task| println!("{task}"));
-		let Self { ref todo, ref done } = self;
+		let Self { todo, done } = self;
 		if !todo.is_empty() {
 			println!("TODO:");
 			select(todo)
@@ -289,10 +289,9 @@ impl List {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Display for Task {
 	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-
 		write!(
 			formatter,
-			"[{:>13}] * {}",
+			"[{:>15.15}] * {}",
 			self.group,
 			self.name,
 		)?;
