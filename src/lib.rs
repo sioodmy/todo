@@ -151,7 +151,7 @@ fn ref_map<T, U, E, F>(resulting: &Result<T, E>, map: impl FnOnce(&T) -> Result<
 fn is_query(group: &String, query: &Option<String>) -> bool {
 	query
 		.as_ref()
-		.map_or(true, |query| query == group)
+		.map_or(true, |query| group.contains(query))
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 impl Todo {
@@ -228,10 +228,21 @@ impl List {
 	}
 
 	pub fn finish_task(&mut self, identifier: String, query: Option<String>) {
-		let Some(position) = self
-			.todo
-			.iter()
-			.position(|Task { name, group, .. }| *name == identifier && is_query(&group, &query)) else { return };
+		let position = match identifier.parse::<usize>() {
+			Ok(index) => {
+				if index < self
+					.todo
+					.len()
+				{ Some(index) } else { None }
+			},
+			Err(_) => {
+				self
+					.todo
+					.iter()
+					.position(|Task { name, group, .. }| name.contains(&identifier) && is_query(&group, &query))
+			},
+		};
+		let Some(position) = position else { return };
 		self
 			.done
 			.push(
