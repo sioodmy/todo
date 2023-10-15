@@ -27,13 +27,12 @@ fn main() -> End<()> {
 				)
 			)
 		),
-		Finish => instance
-			.finish_task(
-				arguments
-					.next()
-					.unwrap_or(String::from(' ')),
-				arguments.next(),
-			),
+		Finish => instance.finish_task(
+			arguments
+				.next()
+				.unwrap_or(String::from(' ')),
+			arguments.next(),
+		),
 		List => instance.query(arguments.next()),
 		Clear => instance.clear_finished(),
 		Raw => instance.all_raw(),
