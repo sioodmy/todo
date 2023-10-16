@@ -1,25 +1,44 @@
 use std::env;
-use todo_bin::{help, Todo};
+use todo_bin::*;
+use Command::*;
 
-fn main() {
-    let todo = Todo::new().expect("Couldn't create the todo instance");
-
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() > 1 {
-        let command = &args[1];
-        match &command[..] {
-            "list" => todo.list(),
-            "add" => todo.add(&args[2..]),
-            "rm" => todo.remove(&args[2..]),
-            "done" => todo.done(&args[2..]),
-            "raw" => todo.raw(&args[2..]),
-            "sort" => todo.sort(),
-            "reset" => todo.reset(),
-            "restore" => todo.restore(),
-            "help" | "--help" | "-h" | _ => help(),
-        }
-    } else {
-        todo.list();
-    }
+fn main() -> End<()> {
+	let mut arguments = env::args()
+		.skip(1)
+		.peekable(); 
+	if arguments
+		.peek()
+		.is_none() { /* enter repl? */ help(); return Ok(()) };
+	let command = arguments
+		.next()
+		.unwrap() /* unwrap safe */
+		.parse::<Command>()?;
+	if let New = command { return Todo::create(arguments.next()) }
+	let mut instance = Todo::new(env::var("TODO").ok())?;
+	match command {
+		Add => instance.add_task(
+			Task::from(
+				(
+					arguments
+						.next()
+						.or_error("NO TASK PROVIDED ")?,
+					arguments.next(),
+					arguments.next(),
+				)
+			)
+		),
+		Finish => instance.finish_task(
+			arguments
+				.next()
+				.unwrap_or(String::from(' ')),
+			arguments.next(),
+		),
+		List => instance.query(arguments.next()),
+		Clear => instance.clear_finished(),
+		Raw => instance.all_raw(),
+		Help => help(),
+		_ => unimplemented!(),
+	}
+	instance.save()?;
+	Ok(())
 }

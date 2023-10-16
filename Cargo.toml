@@ -1,14 +1,35 @@
 [package]
 name = "todo-bin"
-version = "0.1.0"
-edition = "2018"
+version = "2.0.0"
+edition = "2021"
 license = "GPL-3.0-only"
 description = "Simple todo cli program written in rust"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-colored = "2"
-directories = "4.0"
+serde = { version = "1", features = ["derive"] }
+toml = { version = "*", features = ["display"] }
+
+[profile.release]
+opt-level = 3
+debug = false
+strip = true
+debug-assertions = false
+overflow-checks = false
+lto = true
+panic = "abort"
+incremental = false
+codegen-units = 1
+
+[profile.release.package."*"]
+opt-level = 3
+debug = false
+strip = true
+debug-assertions = false
+incremental = false
+overflow-checks = false
+codegen-units = 1
+
 [[bin]]
 name = "todo"
 path = "src/main.rs"

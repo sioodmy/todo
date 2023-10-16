@@ -1,323 +1,359 @@
-use colored::*;
-use std::fs;
-use std::fs::OpenOptions;
-use std::io::prelude::Read;
-use std::io::{self, BufReader, BufWriter, Write};
-use std::path::Path;
-use std::{env, process};
-
-pub struct Todo {
-    pub todo: Vec<String>,
-    pub todo_path: String,
-    pub todo_bak: String,
-    pub no_backup: bool,
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+use std::{
+	fs::{ self, File, OpenOptions },
+	fmt::{ self, Display },
+	io::{ Read, Write },
+	str::FromStr,
+	ops::{ Deref, DerefMut },
+	path::PathBuf,
+};
+use serde::{ Deserialize, Serialize };
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+mod errors {
+	macro_rules! msg {
+		($name: ident = $($tokens: tt)+) => { pub(super) const $name: &str = concat!($(stringify!($tokens), ' '),+); }
+	}
+	msg!{ PARSE = PARSE ERROR }
+	msg!{ READ = READING FAILED }
+	msg!{ OPEN = OPENING FAILED }
+	msg!{ SAVE = SAVING FAILED }
+	msg!{ FIND = FILE NOT FOUND }
+	// TODO: more descriptive errors.
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+pub type End<T> = Result<T, String>;
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+pub struct Todo { // central structure (lives only in memory)
+	pub list: List,
+	pub path: PathBuf,
 }
 
-impl Todo {
-    pub fn new() -> Result<Self, String> {
-        let todo_path: String = match env::var("TODO_PATH") {
-            Ok(t) => t,
-            Err(_) => {
-                let home = env::var("HOME").unwrap();
-
-                // Look for a legacy TODO file path
-                let legacy_todo = format!("{}/TODO", &home);
-                match Path::new(&legacy_todo).exists() {
-                    true => legacy_todo,
-                    false => format!("{}/.todo", &home),
-                }
-            }
-        };
-
-        let todo_bak: String = match env::var("TODO_BAK_DIR") {
-            Ok(t) => t,
-            Err(_) => String::from("/tmp/todo.bak"),
-        };
-
-        let no_backup = env::var("TODO_NOBACKUP").is_ok();
-
-        let todofile = OpenOptions::new()
-            .write(true)
-            .read(true)
-            .create(true)
-            .open(&todo_path)
-            .expect("Couldn't open the todofile");
-
-        // Creates a new buf reader
-        let mut buf_reader = BufReader::new(&todofile);
-
-        // Empty String ready to be filled with TODOs
-        let mut contents = String::new();
-
-        // Loads "contents" string with data
-        buf_reader.read_to_string(&mut contents).unwrap();
-
-        // Splits contents of the TODO file into a todo vector
-        let todo = contents.to_string().lines().map(str::to_string).collect();
-
-        // Returns todo
-        Ok(Self {
-            todo,
-            todo_path,
-            todo_bak,
-            no_backup,
-        })
-    }
-
-    // Prints every todo saved
-    pub fn list(&self) {
-        let handle = io::stdout().lock();
-        // Buffered writer for stdout stream
-        let mut writer = BufWriter::new(handle);
-        let mut data = String::new();
-        // This loop will repeat itself for each task in TODO file
-        for (number, task) in self.todo.iter().enumerate() {
-            if task.len() > 5 {
-                // Converts virgin default number into a chad BOLD string
-                let number = (number + 1).to_string().bold();
-
-                // Saves the symbol of current task
-                let symbol = &task[..4];
-                // Saves a task without a symbol
-                let task = &task[4..];
-
-                // Checks if the current task is completed or not...
-                if symbol == "[*] " {
-                    // DONE
-                    // If the task is completed, then it prints it with a strikethrough
-                    data = format!("{} {}\n", number, task.strikethrough());
-                } else if symbol == "[ ] " {
-                    // NOT DONE
-                    // If the task is not completed yet, then it will print it as it is
-                    data = format!("{} {}\n", number, task);
-                }
-                writer
-                    .write_all(data.as_bytes())
-                    .expect("Failed to write to stdout");
-            }
-        }
-    }
-
-    // This one is for yall, dmenu chads <3
-    pub fn raw(&self, arg: &[String]) {
-        if arg.len() > 1 {
-            eprintln!("todo raw takes only 1 argument, not {}", arg.len())
-        } else if arg.is_empty() {
-            eprintln!("todo raw takes 1 argument (done/todo)");
-        } else {
-            let handle = io::stdout().lock();
-            // Buffered writer for stdout stream
-            let mut writer = BufWriter::new(handle);
-            let mut data = String::new();
-            // This loop will repeat itself for each task in TODO file
-            for task in self.todo.iter() {
-                if task.len() > 5 {
-                    // Saves the symbol of current task
-                    let symbol = &task[..4];
-                    // Saves a task without a symbol
-                    let task = &task[4..];
-
-                    // Checks if the current task is completed or not...
-                    if symbol == "[*] " && arg[0] == "done" {
-                        // DONE
-                        //If the task is completed, then it prints it with a strikethrough
-                        data = format!("{}\n", task);
-                    } else if symbol == "[ ] " && arg[0] == "todo" {
-                        // NOT DONE
-
-                        //If the task is not completed yet, then it will print it as it is
-                        data = format!("{}\n", task);
-                    }
-                    writer
-                        .write_all(data.as_bytes())
-                        .expect("Failed to write to stdout");
-                }
-            }
-        }
-    }
-    // Adds a new todo
-    pub fn add(&self, args: &[String]) {
-        if args.is_empty() {
-            eprintln!("todo add takes at least 1 argument");
-            process::exit(1);
-        }
-        // Opens the TODO file with a permission to:
-        let todofile = OpenOptions::new()
-            .create(true) // a) create the file if it does not exist
-            .append(true) // b) append a line to it
-            .open(&self.todo_path)
-            .expect("Couldn't open the todofile");
-
-        let mut buffer = BufWriter::new(todofile);
-        for arg in args {
-            if arg.trim().is_empty() {
-                continue;
-            }
-
-            // Appends a new task/s to the file
-            let line = format!("[ ] {}\n", arg);
-            buffer
-                .write_all(line.as_bytes())
-                .expect("unable to write data");
-        }
-    }
-
-    // Removes a task
-    pub fn remove(&self, args: &[String]) {
-        if args.is_empty() {
-            eprintln!("todo rm takes at least 1 argument");
-            process::exit(1);
-        }
-        // Opens the TODO file with a permission to:
-        let todofile = OpenOptions::new()
-            .write(true) // a) write
-            .truncate(true) // b) truncrate
-            .open(&self.todo_path)
-            .expect("Couldn't open the todo file");
-
-        let mut buffer = BufWriter::new(todofile);
-
-        for (pos, line) in self.todo.iter().enumerate() {
-            if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
-                continue;
-            }
-            if args.contains(&(pos + 1).to_string()) {
-                continue;
-            }
-
-            let line = format!("{}\n", line);
-
-            buffer
-                .write_all(line.as_bytes())
-                .expect("unable to write data");
-        }
-    }
-
-    fn remove_file(&self) {
-        match fs::remove_file(&self.todo_path) {
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("Error while clearing todo file: {}", e)
-            }
-        };
-    }
-    // Clear todo by removing todo file
-    pub fn reset(&self) {
-        if !self.no_backup {
-            match fs::copy(&self.todo_path, &self.todo_bak) {
-                Ok(_) => self.remove_file(),
-                Err(_) => {
-                    eprint!("Couldn't backup the todo file")
-                }
-            }
-        } else {
-            self.remove_file();
-        }
-    }
-    pub fn restore(&self) {
-        fs::copy(&self.todo_bak, &self.todo_path).expect("unable to restore the backup");
-    }
-
-    // Sorts done tasks
-    pub fn sort(&self) {
-        // Creates a new empty string
-        let newtodo: String;
-
-        let mut todo = String::new();
-        let mut done = String::new();
-
-        for line in self.todo.iter() {
-            if line.len() > 5 {
-                if &line[..4] == "[ ] " {
-                    let line = format!("{}\n", line);
-                    todo.push_str(&line);
-                } else if &line[..4] == "[*] " {
-                    let line = format!("{}\n", line);
-                    done.push_str(&line);
-                }
-            }
-        }
-
-        newtodo = format!("{}{}", &todo, &done);
-        // Opens the TODO file with a permission to:
-        let mut todofile = OpenOptions::new()
-            .write(true) // a) write
-            .truncate(true) // b) truncrate
-            .open(&self.todo_path)
-            .expect("Couldn't open the todo file");
-
-        // Writes contents of a newtodo variable into the TODO file
-        todofile
-            .write_all(newtodo.as_bytes())
-            .expect("Error while trying to save the todofile");
-    }
-
-    pub fn done(&self, args: &[String]) {
-        if args.is_empty() {
-            eprintln!("todo done takes at least 1 argument");
-            process::exit(1);
-        }
-
-        // Opens the TODO file with a permission to overwrite it
-        let todofile = OpenOptions::new()
-            .write(true)
-            .open(&self.todo_path)
-            .expect("Couldn't open the todofile");
-        let mut buffer = BufWriter::new(todofile);
-
-        for (pos, line) in self.todo.iter().enumerate() {
-            if line.len() > 5 {
-                if args.contains(&(pos + 1).to_string()) {
-                    if &line[..4] == "[ ] " {
-                        let line = format!("[*] {}\n", &line[4..]);
-                        buffer
-                            .write_all(line.as_bytes())
-                            .expect("unable to write data");
-                    } else if &line[..4] == "[*] " {
-                        let line = format!("[ ] {}\n", &line[4..]);
-                        buffer
-                            .write_all(line.as_bytes())
-                            .expect("unable to write data");
-                    }
-                } else if &line[..4] == "[ ] " || &line[..4] == "[*] " {
-                    let line = format!("{}\n", line);
-                    buffer
-                        .write_all(line.as_bytes())
-                        .expect("unable to write data");
-                }
-            }
-        }
-    }
+#[derive(Serialize)]
+#[derive(Deserialize)]
+#[derive(Debug)]
+#[derive(Clone)]
+#[derive(Default)]
+pub struct Task {
+	name: String,
+	group: String,
+	purpose: Option<String>,
 }
 
-const TODO_HELP: &str = "Usage: todo [COMMAND] [ARGUMENTS]
-Todo is a super fast and simple tasks organizer written in rust
-Example: todo list
-Available commands:
-    - add [TASK/s]
-        adds new task/s
-        Example: todo add \"buy carrots\"
-    - list
-        lists all tasks
-        Example: todo list
-    - done [INDEX]
-        marks task as done
-        Example: todo done 2 3 (marks second and third tasks as completed)
-    - rm [INDEX]
-        removes a task
-        Example: todo rm 4
-    - reset
-        deletes all tasks
-    - restore 
-        restore recent backup after reset
-    - sort
-        sorts completed and uncompleted tasks
-        Example: todo sort
-    - raw [todo/done]
-        prints nothing but done/incompleted tasks in plain text, useful for scripting
-        Example: todo raw done
-";
+#[derive(Serialize)]
+#[derive(Deserialize)]
+#[derive(Debug)]
+#[derive(Clone)]
+#[derive(Default)]
+pub struct List {
+	todo: Vec<Task>,
+	done: Vec<Task>,
+}
+// Desired structure:
+//
+// +-----------------------+    +-----------------------+
+// |   Todo                |    |   Done                |
+// |                       |    |                       |
+// |   +---------------+   |    |   +---------------+   |
+// |   |  Board A      |   |    |   |  Board A      |   |
+// |   |               |   |    |   |               |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  | name    |  |   |    |   |  | name    |  |   |
+// |   |  | purpose |  |   |    |   |  | purpose |  |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  ...          |   |    |   |  ...          |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  | name    |  |   |    |   |  | name    |  |   |
+// |   |  | purpose |  |   |    |   |  | purpose |  |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |               |   |    |   |               |   |
+// |   +---------------+   |    |   +---------------+   |
+// |   +---------------+   |    |   +---------------+   |
+// |   |  Board B      |   |    |   |  Board B      |   |
+// |   |               |   |    |   |               |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  | name    |  |   |    |   |  | name    |  |   |
+// |   |  | purpose |  |   |    |   |  | purpose |  |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  ...          |   |    |   |  ...          |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  | name    |  |   |    |   |  | name    |  |   |
+// |   |  | purpose |  |   |    |   |  | purpose |  |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |               |   |    |   |               |   |
+// |   +---------------+   |    |   +---------------+   |
+// |   ...                 |    |   ...                 |
+// |   +---------------+   |    |   +---------------+   |
+// |   |  Board Z      |   |    |   |  Board Z      |   |
+// |   |               |   |    |   |               |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  | name    |  |   |    |   |  | name    |  |   |
+// |   |  | purpose |  |   |    |   |  | purpose |  |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  ...          |   |    |   |  ...          |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |  | name    |  |   |    |   |  | name    |  |   |
+// |   |  | purpose |  |   |    |   |  | purpose |  |   |
+// |   |  +---------+  |   |    |   |  +---------+  |   |
+// |   |               |   |    |   |               |   |
+// |   +---------------+   |    |   +---------------+   |
+// |                       |    |                       |
+// +-----------------------+    +-----------------------+
+// Board names are arbitrary
+//
+// in words:
+// Tasks are grouped into boards of which there can exist two with the same name.
+// the only difference being them being done ore not.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#[derive(Debug)]
+#[derive(Clone)]
+#[derive(Default)]
+pub enum Command { // map of public functions intended to be used as commands.
+	Add,
+	Finish,
+	List,
+	Clear,
+	Raw,
+	New,
+	#[default] Help,
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+pub trait Message {
+	type Inner;
+
+	fn or_error(self, text: impl Display) -> End<Self::Inner>;
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 pub fn help() {
-    // For readability
-    println!("{}", TODO_HELP);
+	println!(
+		"Usage: todo [COMMAND] [ARGUMENTS..]\n\n\
+		Todo is a super fast and simple tasks organizer written in rust\n\n\
+		Available commands:\n  \
+		add     <TASK-NAME> <GROUP?> <PURPOSE?>  adds a task.\n  \
+		finish  <TASK-NAME> <GROUP?>             marks a task as finished.\n  \
+		list    <GROUP?>                         either list all or a specific board of tasks.\n  \
+		clear                                    clears all the finished task.\n  \
+		raw                                      list all with a raw formatting.\n  \
+		new     <FILE-NAME?>                     create a todo file in the current directory.\n  \
+		help                                     print out this help prompt.\n\n\
+		NOTE:\n  \
+		the question mark inside the angle-brackets means that that argument is optional."
+	);
 }
+
+fn ref_map<T, U, E, F>(resulting: &Result<T, E>, map: impl FnOnce(&T) -> Result<U, F>) -> Option<U> {
+	resulting
+		.as_ref()
+		.ok()
+		.map(|item| map(item).ok())
+		.flatten()
+}
+
+fn is_query(group: &String, query: &Option<String>) -> bool {
+	query
+		.as_ref()
+		.map_or(true, |query| group.contains(query))
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+impl Todo {
+	pub fn new(path: Option<String>) -> End<Todo> {
+		let error = || -> End<PathBuf> {
+			Ok(
+				fs::read_dir(".")
+					.or_error(errors::READ)?
+					.filter(|item|
+						ref_map(
+							&item,
+							|item| item.file_type(),
+						)
+							.map_or(false, |item| item.is_file())
+					)
+					.find(|file|
+						ref_map(
+							&file,
+							|file|
+								file
+									.file_name()
+									.into_string()
+						)
+							.map(|name| name.to_lowercase())
+							.is_some_and(|name| name.contains("todo") && name.ends_with("toml"))
+					)
+					.or_error(errors::FIND)?
+					.unwrap() /* unwrap safe */
+					.path()
+		
+			)
+		};
+		let path = path.map_or_else(error, |text| Ok(PathBuf::from(text)))?;
+		Ok(
+			Todo {
+				list: List::new(path.clone()).unwrap_or_default(),
+				path
+			}
+		)
+	}
+
+	pub fn create(path: Option<String>) -> End<()> {
+		OpenOptions::new()
+			.write(true)
+			.create_new(true)
+			.open(path.unwrap_or(String::from("todo.toml")))
+			.or_error(errors::OPEN)?;
+		Ok(())
+	}
+
+	pub fn save(self) -> End<()> {
+		OpenOptions::new()
+			.write(true)
+			.truncate(true)
+			.open(self.path)
+			.or_error(errors::OPEN)?
+			.write_all(
+				toml::to_string_pretty(&self.list)
+					.or_error(errors::PARSE)?
+					.as_bytes()
+			)
+			.or_error(errors::SAVE)
+	}
+}
+
+impl List {
+	pub fn new(path: PathBuf) -> End<Self> {
+		let mut file = File::open(path).or_error(errors::OPEN)?;
+		let buffer = &mut String::with_capacity(255);
+		file
+			.read_to_string(buffer)
+			.or_error(errors::READ)?;
+		toml::from_str(&buffer).or_error(errors::PARSE)
+	}
+
+	pub fn finish_task(&mut self, identifier: String, query: Option<String>) {
+		let position = match identifier.parse::<usize>() {
+			Ok(index) => {
+				if index < self
+					.todo
+					.len()
+				{ Some(index) } else { None }
+			},
+			Err(_) => {
+				self
+					.todo
+					.iter()
+					.position(|Task { name, group, .. }| name.contains(&identifier) && is_query(&group, &query))
+			},
+		};
+		let Some(position) = position else { return };
+		self
+			.done
+			.push(
+				self
+					.todo
+					.remove(position) // probably safe
+			);
+	}
+
+	pub fn add_task(&mut self, task: Task) {
+		self
+			.todo
+			.push(task)
+	}
+
+	pub fn clear_finished(&mut self) {
+		self
+			.done
+			.clear()
+	}
+
+	pub fn query(&self, query: Option<String>) {
+		let select = |pool: &Vec<Task>|
+			pool
+				.iter()
+				.filter(|task| is_query(&task.group, &query))
+				.for_each(|task| println!("{task}"));
+		let Self { todo, done } = self;
+		if !todo.is_empty() {
+			println!("TODO:");
+			select(todo)
+		}
+		if !todo.is_empty() && !done.is_empty() { println!() }
+		if !done.is_empty() {
+			println!("DONE:");
+			select(done)
+		}
+	}
+
+	pub fn all_raw(&self) {
+		let print = |tasks: &Vec<Task>, finished: bool|
+			for task in tasks.iter() {
+				let state = if finished { "DONE" } else { "TODO" };
+				let description = task
+					.purpose
+					.as_ref()
+					.map(|task| format!(":{task}"))
+					.unwrap_or_default();
+				println!("{state}@{}/{}{description}", task.group, task.name,)
+			};
+		print(&self.todo, false);
+		print(&self.done, true);
+	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+impl Display for Task {
+	fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+		write!(
+			formatter,
+			"[{:>15.15}] * {}",
+			self.group,
+			self.name,
+		)?;
+		let Some(ref description) = self.purpose else { return Ok(()) };
+		write!(formatter, ": \"{}\"", description)
+	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+impl<T, E> Message for Result<T, E> {
+	type Inner = T;
+
+	fn or_error(self, text: impl Display) -> End<T> { self.map_err(|_| format!("{text}")) }
+}
+
+impl<T> Message for Option<T> {
+	type Inner = T;
+
+	fn or_error(self, text: impl Display) -> End<T> { self.ok_or(format!("{text}")) }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+impl From<(String, Option<String>, Option<String>)> for Task {
+	fn from((name, group, purpose): (String, Option<String>, Option<String>)) -> Task {
+		Task { name, group: group.unwrap_or(String::from("global")), purpose }
+	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+impl FromStr for Command {
+	type Err = String;
+
+	fn from_str(text: &str) -> End<Self> {
+		use Command::*;
+		let text = text.to_lowercase();
+		[Add, Finish, List, Clear, Raw, New, Help]
+			.into_iter()
+			.map(|variant| (format!("{variant:?}").to_lowercase(), variant))
+			.find_map(|(reference, variant)|
+				(1..=reference.len())
+					.any(|upper| text == &reference[..upper])
+					.then_some(variant)
+			)
+			.or_error(errors::PARSE)
+	}
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+impl Deref for Todo {
+	type Target = List;
+
+	fn deref(&self) -> &List { &self.list }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+impl DerefMut for Todo {
+	fn deref_mut(&mut self) -> &mut List { &mut self.list }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
