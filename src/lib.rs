@@ -53,7 +53,7 @@ impl Todo {
         buf_reader.read_to_string(&mut contents).unwrap();
 
         // Splits contents of the TODO file into a todo vector
-        let todo = contents.to_string().lines().map(str::to_string).collect();
+        let todo = contents.lines().map(str::to_string).collect();
 
         // Returns todo
         Ok(Self {
@@ -66,9 +66,9 @@ impl Todo {
 
     // Prints every todo saved
     pub fn list(&self) {
-        let handle = io::stdout().lock();
+        let stdout = io::stdout();
         // Buffered writer for stdout stream
-        let mut writer = BufWriter::new(handle);
+        let mut writer = BufWriter::new(stdout);
         let mut data = String::new();
         // This loop will repeat itself for each task in TODO file
         for (number, task) in self.todo.iter().enumerate() {
@@ -105,9 +105,9 @@ impl Todo {
         } else if arg.is_empty() {
             eprintln!("todo raw takes 1 argument (done/todo)");
         } else {
-            let handle = io::stdout().lock();
+            let stdout = io::stdout();
             // Buffered writer for stdout stream
-            let mut writer = BufWriter::new(handle);
+            let mut writer = BufWriter::new(stdout);
             let mut data = String::new();
             // This loop will repeat itself for each task in TODO file
             for task in self.todo.iter() {
