@@ -29,8 +29,9 @@ Todo is a super fast and simple tasks organizer written in rust
 Example: todo list
 Available commands:
     - add [TASK/s]
-        adds new task/s
-        Example: todo add "buy carrots"
+        adds new task/s with an optional description
+        Example: todo add shopping
+        What is the goal of your task shopping? "buy carrots"
     - list
         lists all tasks
         Example: todo list
