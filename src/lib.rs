@@ -178,9 +178,6 @@ impl Todo {
         let mut buffer = BufWriter::new(todofile);
 
         for (pos, line) in self.todo.iter().enumerate() {
-            if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
-                continue;
-            }
             if args.contains(&(pos + 1).to_string()) {
                 continue;
             }
