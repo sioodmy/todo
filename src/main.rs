@@ -19,6 +19,10 @@ fn main() {
             "restore" => todo.restore(),
             "help" | "--help" | "-h" | _ => help(),
         }
+        if command != "list"{
+          let updated_todo = Todo::new().expect("Couldn't create the todo instance");
+          updated_todo.list();
+        }
     } else {
         todo.list();
     }
