@@ -72,7 +72,7 @@ impl Todo {
         let mut data = String::new();
         // This loop will repeat itself for each task in TODO file
         for (number, task) in self.todo.iter().enumerate() {
-            if task.len() > 5 {
+            if task.len() > 4 {
                 // Converts virgin default number into a chad BOLD string
                 let number = (number + 1).to_string().bold();
 
@@ -178,9 +178,6 @@ impl Todo {
         let mut buffer = BufWriter::new(todofile);
 
         for (pos, line) in self.todo.iter().enumerate() {
-            if args.contains(&"done".to_string()) && &line[..4] == "[*] " {
-                continue;
-            }
             if args.contains(&(pos + 1).to_string()) {
                 continue;
             }
