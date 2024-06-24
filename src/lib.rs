@@ -153,12 +153,27 @@ impl Todo {
             if arg.trim().is_empty() {
                 continue;
             }
+            
+            print!("What is the goal of your task {arg}? ");
+            
+            let mut task_goal = String::new();
+            let _ = io::stdout().flush();
 
-            // Appends a new task/s to the file
-            let line = format!("[ ] {}\n", arg);
-            buffer
-                .write_all(line.as_bytes())
-                .expect("unable to write data");
+            io::stdin().read_line(&mut task_goal).expect("unable to get task goal");
+
+            if task_goal.len() > 1 {
+                // Append a new task/s with its goal to the file
+                let line = format!("[ ] {}: {}", arg, task_goal);
+                buffer
+                    .write_all(line.as_bytes())
+                    .expect("unable to write data");
+            } else {
+                // Appends a new task/s to the file
+                let line = format!("[ ] {}\n", arg);
+                buffer
+                    .write_all(line.as_bytes())
+                    .expect("unable to write data");
+            }
         }
     }
 
