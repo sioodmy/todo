@@ -285,6 +285,44 @@ impl Todo {
             }
         }
     }
+
+    pub fn edit(&self, args: &[String]) {
+        if args.is_empty() || args.len() != 2{
+            eprintln!("todo edit takes exact 2 arguments");
+            process::exit(1);
+        }
+        // Opens the TODO file with a permission to overwrite it
+        let todofile = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(&self.todo_path)
+        .expect("Couldn't open the todofile");
+        let mut buffer = BufWriter::new(todofile);
+
+        for (pos, line) in self.todo.iter().enumerate() {
+            if line.len() > 5{
+                if args[0].contains(&(pos + 1).to_string()) {
+                    if &line[..4] == "[ ] " {
+                        let line = format!("[ ] {}\n", &args[1]);
+                        buffer
+                            .write_all(line.as_bytes())
+                            .expect("unable to write data");
+                    } else if &line[..4] == "[*] " {
+                        let line = format!("[*] {}\n", &args[1]);
+                        buffer
+                            .write_all(line.as_bytes())
+                            .expect("unable to write data");
+                    } 
+                } else if &line[..4] == "[ ] " || &line[..4] == "[*] " {
+                    let line = format!("{}\n", line);
+                    buffer
+                        .write_all(line.as_bytes())
+                        .expect("unable to write data");
+                }
+            }
+        }
+
+    }
 }
 
 const TODO_HELP: &str = "Usage: todo [COMMAND] [ARGUMENTS]
@@ -294,6 +332,9 @@ Available commands:
     - add [TASK/s]
         adds new task/s
         Example: todo add \"buy carrots\"
+    - edit [INDEX] [EDITED TASK/s]
+        edits an existing task/s
+        Example: todo edit 1 banana
     - list
         lists all tasks
         Example: todo list

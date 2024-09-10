@@ -14,6 +14,7 @@ fn main() {
             "rm" => todo.remove(&args[2..]),
             "done" => todo.done(&args[2..]),
             "raw" => todo.raw(&args[2..]),
+            "edit" => todo.edit(&args[2..]),
             "sort" => todo.sort(),
             "reset" => todo.reset(),
             "restore" => todo.restore(),
