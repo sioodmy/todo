@@ -31,6 +31,9 @@ Available commands:
     - add [TASK/s]
         adds new task/s
         Example: todo add "buy carrots"
+    - edit [INDEX] [EDITED TASK/s]
+        edits an existing task/s
+        Example: todo edit 1 banana
     - list
         lists all tasks
         Example: todo list
