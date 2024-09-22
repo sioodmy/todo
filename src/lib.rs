@@ -135,6 +135,45 @@ impl Todo {
             }
         }
     }
+     // search a new task
+    pub fn search(&self, keyword: &str) {
+        let keyword_lower = keyword.to_lowercase();
+        let stdout = io::stdout();
+        let mut writer = BufWriter::new(stdout);
+        let mut found = false; // To track if any task matches
+
+        // Iterate over the tasks and check if they contain the keyword
+        for (number, task) in self.todo.iter().enumerate() {
+            if task.len() > 4 {
+                let task_content = &task[4..]; // Extract the task without the symbol
+                if task_content.to_lowercase().contains(&keyword_lower) {
+                    found = true;
+                    // Highlight the search keyword within the task
+                    let highlighted_task = task_content.replace(
+                        &keyword_lower,
+                        &keyword_lower.red().bold().to_string(),
+                    );
+
+                    let number = (number + 1).to_string().bold();
+                    let symbol = &task[..4]; // Get task symbol
+
+                    let output = if symbol == "[*] " {
+                        format!("{} {}\n", number, highlighted_task.strikethrough())
+                    } else {
+                        format!("{} {}\n", number, highlighted_task)
+                    };
+
+                    writer
+                        .write_all(output.as_bytes())
+                        .expect("Failed to write to stdout");
+                }
+            }
+        }
+
+        if !found {
+            println!("No tasks found with the keyword '{}'", keyword);
+        }
+    }
     // Adds a new todo
     pub fn add(&self, args: &[String]) {
         if args.is_empty() {
@@ -142,7 +181,7 @@ impl Todo {
             process::exit(1);
         }
         let mut task = String::new();
-        let mut priority = String::from("none"); // default priority
+        let mut priority = String::from("none");
 
         let mut iter = args.iter();
         while let Some(arg) = iter.next() {
