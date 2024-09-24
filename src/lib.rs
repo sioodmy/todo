@@ -135,31 +135,89 @@ impl Todo {
             }
         }
     }
+     // search a new task
+    pub fn search(&self, keyword: &str) {
+        let keyword_lower = keyword.to_lowercase();
+        let stdout = io::stdout();
+        let mut writer = BufWriter::new(stdout);
+        let mut found = false; // To track if any task matches
+
+        // Iterate over the tasks and check if they contain the keyword
+        for (number, task) in self.todo.iter().enumerate() {
+            if task.len() > 4 {
+                let task_content = &task[4..]; // Extract the task without the symbol
+                if task_content.to_lowercase().contains(&keyword_lower) {
+                    found = true;
+                    // Highlight the search keyword within the task
+                    let highlighted_task = task_content.replace(
+                        &keyword_lower,
+                        &keyword_lower.red().bold().to_string(),
+                    );
+
+                    let number = (number + 1).to_string().bold();
+                    let symbol = &task[..4]; // Get task symbol
+
+                    let output = if symbol == "[*] " {
+                        format!("{} {}\n", number, highlighted_task.strikethrough())
+                    } else {
+                        format!("{} {}\n", number, highlighted_task)
+                    };
+
+                    writer
+                        .write_all(output.as_bytes())
+                        .expect("Failed to write to stdout");
+                }
+            }
+        }
+
+        if !found {
+            println!("No tasks found with the keyword '{}'", keyword);
+        }
+    }
     // Adds a new todo
     pub fn add(&self, args: &[String]) {
         if args.is_empty() {
             eprintln!("todo add takes at least 1 argument");
             process::exit(1);
         }
-        // Opens the TODO file with a permission to:
+        let mut task = String::new();
+        let mut priority = String::from("none");
+
+        let mut iter = args.iter();
+        while let Some(arg) = iter.next() {
+            if arg == "--priority" {
+                if let Some(prio) = iter.next() {
+                    priority = prio.to_string(); 
+                } else {
+                    eprintln!("Priority argument requires a value (e.g., --priority high)");
+                    process::exit(1);
+                }
+            } else {
+                if !task.is_empty() {
+                    task.push(' ');
+                }
+                task.push_str(arg);
+            }
+        }
+
+        if task.trim().is_empty() {
+            eprintln!("Task description cannot be empty");
+            process::exit(1);
+        }
+
+        // Open the TODO file with append mode
         let todofile = OpenOptions::new()
-            .create(true) // a) create the file if it does not exist
-            .append(true) // b) append a line to it
+            .create(true)
+            .append(true)
             .open(&self.todo_path)
-            .expect("Couldn't open the todofile");
+            .expect("Couldn't open the todo file");
 
         let mut buffer = BufWriter::new(todofile);
-        for arg in args {
-            if arg.trim().is_empty() {
-                continue;
-            }
+        let line = format!("[ ] {} (priority: {})\n", task, priority);
 
-            // Appends a new task/s to the file
-            let line = format!("[ ] {}\n", arg);
-            buffer
-                .write_all(line.as_bytes())
-                .expect("unable to write data");
-        }
+        buffer
+            .write_all(line.as_bytes())
+            .expect("unable to write data");
     }
 
     // Removes a task
@@ -287,20 +345,20 @@ impl Todo {
     }
 
     pub fn edit(&self, args: &[String]) {
-        if args.is_empty() || args.len() != 2{
+        if args.is_empty() || args.len() != 2 {
             eprintln!("todo edit takes exact 2 arguments");
             process::exit(1);
         }
         // Opens the TODO file with a permission to overwrite it
         let todofile = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open(&self.todo_path)
-        .expect("Couldn't open the todofile");
+            .write(true)
+            .truncate(true)
+            .open(&self.todo_path)
+            .expect("Couldn't open the todofile");
         let mut buffer = BufWriter::new(todofile);
 
         for (pos, line) in self.todo.iter().enumerate() {
-            if line.len() > 5{
+            if line.len() > 5 {
                 if args[0].contains(&(pos + 1).to_string()) {
                     if &line[..4] == "[ ] " {
                         let line = format!("[ ] {}\n", &args[1]);
@@ -312,7 +370,7 @@ impl Todo {
                         buffer
                             .write_all(line.as_bytes())
                             .expect("unable to write data");
-                    } 
+                    }
                 } else if &line[..4] == "[ ] " || &line[..4] == "[*] " {
                     let line = format!("{}\n", line);
                     buffer
@@ -321,7 +379,6 @@ impl Todo {
                 }
             }
         }
-
     }
 }
 
