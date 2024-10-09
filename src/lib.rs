@@ -131,6 +131,7 @@ impl Todo {
                     writer
                         .write_all(data.as_bytes())
                         .expect("Failed to write to stdout");
+                    data.clear();
                 }
             }
         }
