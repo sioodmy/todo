@@ -250,14 +250,13 @@ impl Todo {
         let mut done = String::new();
 
         for line in self.todo.iter() {
-            if line.len() > 5 {
-                if &line[..4] == "[ ] " {
-                    let line = format!("{}\n", line);
-                    todo.push_str(&line);
-                } else if &line[..4] == "[*] " {
-                    let line = format!("{}\n", line);
-                    done.push_str(&line);
-                }
+            let entry = Entry::read_line(line);
+            if entry.done {
+                let line = format!("{}\n", line);
+                done.push_str(&line);
+            } else {
+                let line = format!("{}\n", line);
+                todo.push_str(&line);
             }
         }
 
@@ -280,12 +279,10 @@ impl Todo {
             eprintln!("todo done takes at least 1 argument");
             process::exit(1);
         }
-        if fs::metadata(&self.todo_path).is_ok(){
-            fs::remove_file(&self.todo_path).expect("Failed to delete the file");
-        }
         
         // Opens the TODO file with a permission to overwrite it
         let todofile = OpenOptions::new()
+            .truncate(true)
             .create(true)
             .write(true)
             .open(&self.todo_path)
