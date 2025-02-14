@@ -20,7 +20,7 @@ impl Entry {
     }
 
     pub fn file_line(&self) -> String {
-        format!("{} {}\n", self.todo_entry, self.done)
+        format!("{} {}\n", self.todo_entry, &(self.done).to_string())
     }
 
     pub fn list_line(&self, number: usize) -> String {
@@ -35,6 +35,17 @@ impl Entry {
             self.todo_entry.clone()
         };
         format!("{number} {todo_entry}\n")
+    }
+
+    pub fn read_line(line: &String) -> Self {
+        let line_vec: Vec<&str> = line.split_whitespace().collect();
+        let todo_entry = line_vec[0].to_string();
+        let done = line_vec[1].parse().expect("Could not convert the status to bool");
+
+        Self {
+            todo_entry,
+            done,
+        }
     }
     
 }
@@ -106,10 +117,7 @@ impl Todo {
         let mut data = String::new();
         // This loop will repeat itself for each task in TODO file
         for (number, task) in self.todo.iter().enumerate() {
-            let line_break: Vec<&str> = task.split_whitespace().collect();
-            let todo_entry = line_break[0].to_string();
-            let done: bool = line_break[1].parse().expect("Could not convert the status to bool");
-            let entry = Entry::new(todo_entry, done);
+            let entry = Entry::read_line(task);
 
             let number = number + 1;
 
@@ -117,8 +125,8 @@ impl Todo {
             data.push_str(&line);
         }
         writer
-                .write_all(data.as_bytes())
-                .expect("Failed to write to stdout");
+            .write_all(data.as_bytes())
+            .expect("Failed to write to stdout");
     }
 
     // This one is for yall, dmenu chads <3
@@ -285,29 +293,28 @@ impl Todo {
             .open(&self.todo_path)
             .expect("Couldn't open the todofile");
         let mut buffer = BufWriter::new(todofile);
+        let mut data = String::new();
 
         for (pos, line) in self.todo.iter().enumerate() {
-            if line.len() > 5 {
-                if args.contains(&(pos + 1).to_string()) {
-                    if &line[..4] == "[ ] " {
-                        let line = format!("[*] {}\n", &line[4..]);
-                        buffer
-                            .write_all(line.as_bytes())
-                            .expect("unable to write data");
-                    } else if &line[..4] == "[*] " {
-                        let line = format!("[ ] {}\n", &line[4..]);
-                        buffer
-                            .write_all(line.as_bytes())
-                            .expect("unable to write data");
-                    }
-                } else if &line[..4] == "[ ] " || &line[..4] == "[*] " {
-                    let line = format!("{}\n", line);
-                    buffer
-                        .write_all(line.as_bytes())
-                        .expect("unable to write data");
-                }
+            if args.contains(&(pos + 1).to_string()) {
+                let mut entry = Entry::read_line(line);
+                entry.done = !entry.done;
+                let line = entry.file_line();
+                data.push_str(&line);
+            } else {
+                let line = format!("{}\n", line); 
+                data.push_str(&line);
             }
         }
+        if data.ends_with('\n') {
+            data.pop();
+        }
+        
+        println!("this is the final data {:?}", data.as_bytes());
+        println!("this is the final data {}", data);
+        buffer
+            .write_all(data.as_bytes())
+            .expect("unable to write data"); 
     }
 
     pub fn edit(&self, args: &[String]) {
