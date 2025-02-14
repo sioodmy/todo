@@ -47,6 +47,10 @@ impl Entry {
             done,
         }
     }
+
+    pub fn raw_line(&self) -> String {
+        format!("{}\n", self.todo_entry)
+    }
     
 }
 
@@ -140,29 +144,19 @@ impl Todo {
             // Buffered writer for stdout stream
             let mut writer = BufWriter::new(stdout);
             let mut data = String::new();
+            let arg = &arg[0];
             // This loop will repeat itself for each task in TODO file
             for task in self.todo.iter() {
-                if task.len() > 5 {
-                    // Saves the symbol of current task
-                    let symbol = &task[..4];
-                    // Saves a task without a symbol
-                    let task = &task[4..];
-
-                    // Checks if the current task is completed or not...
-                    if symbol == "[*] " && arg[0] == "done" {
-                        // DONE
-                        //If the task is completed, then it prints it with a strikethrough
-                        data = format!("{}\n", task);
-                    } else if symbol == "[ ] " && arg[0] == "todo" {
-                        // NOT DONE
-
-                        //If the task is not completed yet, then it will print it as it is
-                        data = format!("{}\n", task);
-                    }
-                    writer
-                        .write_all(data.as_bytes())
-                        .expect("Failed to write to stdout");
+                let entry = Entry::read_line(task);
+                if entry.done && arg == "done" {
+                    data = entry.raw_line();
+                } else if !entry.done && arg == "todo" {
+                    data = entry.raw_line();
                 }
+                
+                writer
+                    .write_all(data.as_bytes())
+                    .expect("Failed to write to stdout");
             }
         }
     }
