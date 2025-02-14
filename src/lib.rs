@@ -6,6 +6,40 @@ use std::io::{self, BufReader, BufWriter, Write};
 use std::path::Path;
 use std::{env, process};
 
+pub struct Entry {
+    pub todo_entry: String,
+    pub done: bool,
+}
+
+impl Entry {
+    pub fn new(todo_entry: String, done: bool) -> Self {
+        Self {
+            todo_entry,
+            done,
+        }
+    }
+
+    pub fn file_line(&self) -> String {
+        format!("{} {}\n", self.todo_entry, self.done)
+    }
+
+    pub fn list_line(&self, number: usize) -> String {
+        // Checks if the current task is completed or not...
+        let todo_entry = if self.done {
+            // DONE
+            // If the task is completed, then it prints it with a strikethrough
+            self.todo_entry.strikethrough().to_string()
+        } else {
+            // NOT DONE
+            // If the task is not completed yet, then it will print it as it is
+            self.todo_entry.clone()
+        };
+        format!("{number} {todo_entry}\n")
+    }
+    
+}
+
+
 pub struct Todo {
     pub todo: Vec<String>,
     pub todo_path: String,
@@ -72,30 +106,19 @@ impl Todo {
         let mut data = String::new();
         // This loop will repeat itself for each task in TODO file
         for (number, task) in self.todo.iter().enumerate() {
-            if task.len() > 4 {
-                // Converts virgin default number into a chad BOLD string
-                let number = (number + 1).to_string().bold();
+            let line_break: Vec<&str> = task.split_whitespace().collect();
+            let todo_entry = line_break[0].to_string();
+            let done: bool = line_break[1].parse().expect("Could not convert the status to bool");
+            let entry = Entry::new(todo_entry, done);
 
-                // Saves the symbol of current task
-                let symbol = &task[..4];
-                // Saves a task without a symbol
-                let task = &task[4..];
+            let number = number + 1;
 
-                // Checks if the current task is completed or not...
-                if symbol == "[*] " {
-                    // DONE
-                    // If the task is completed, then it prints it with a strikethrough
-                    data = format!("{} {}\n", number, task.strikethrough());
-                } else if symbol == "[ ] " {
-                    // NOT DONE
-                    // If the task is not completed yet, then it will print it as it is
-                    data = format!("{} {}\n", number, task);
-                }
-                writer
-                    .write_all(data.as_bytes())
-                    .expect("Failed to write to stdout");
-            }
+            let line = entry.list_line(number);
+            data.push_str(&line);
         }
+        writer
+                .write_all(data.as_bytes())
+                .expect("Failed to write to stdout");
     }
 
     // This one is for yall, dmenu chads <3
@@ -155,7 +178,8 @@ impl Todo {
             }
 
             // Appends a new task/s to the file
-            let line = format!("[ ] {}\n", arg);
+            let entry = Entry::new(arg.to_string(), false);
+            let line = entry.file_line();
             buffer
                 .write_all(line.as_bytes())
                 .expect("unable to write data");
