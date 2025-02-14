@@ -20,7 +20,7 @@ impl Entry {
     }
 
     pub fn file_line(&self) -> String {
-        format!("{} {}\n", self.todo_entry, &(self.done).to_string())
+        format!("{} {}\n", self.todo_entry, self.done)
     }
 
     pub fn list_line(&self, number: usize) -> String {
@@ -286,9 +286,13 @@ impl Todo {
             eprintln!("todo done takes at least 1 argument");
             process::exit(1);
         }
-
+        if fs::metadata(&self.todo_path).is_ok(){
+            fs::remove_file(&self.todo_path).expect("Failed to delete the file");
+        }
+        
         // Opens the TODO file with a permission to overwrite it
         let todofile = OpenOptions::new()
+            .create(true)
             .write(true)
             .open(&self.todo_path)
             .expect("Couldn't open the todofile");
@@ -296,22 +300,14 @@ impl Todo {
         let mut data = String::new();
 
         for (pos, line) in self.todo.iter().enumerate() {
+            let mut entry = Entry::read_line(line);
             if args.contains(&(pos + 1).to_string()) {
-                let mut entry = Entry::read_line(line);
                 entry.done = !entry.done;
-                let line = entry.file_line();
-                data.push_str(&line);
-            } else {
-                let line = format!("{}\n", line); 
-                data.push_str(&line);
             }
+            let line = entry.file_line();
+            
+            data.push_str(&line);
         }
-        if data.ends_with('\n') {
-            data.pop();
-        }
-        
-        println!("this is the final data {:?}", data.as_bytes());
-        println!("this is the final data {}", data);
         buffer
             .write_all(data.as_bytes())
             .expect("unable to write data"); 
