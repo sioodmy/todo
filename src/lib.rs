@@ -318,19 +318,16 @@ impl Todo {
         let mut buffer = BufWriter::new(todofile);
 
         for (pos, line) in self.todo.iter().enumerate() {
-            if args[0].contains(&(pos + 1).to_string()) {
+            let line = if args[0].contains(&(pos + 1).to_string()) {
                 let mut entry = Entry::read_line(line);
                 entry.todo_entry = args[1].clone();
-                let line = entry.file_line();
-                buffer
-                    .write_all(line.as_bytes())
-                    .expect("unable to write data");
+                entry.file_line()
             } else {
-                let line = format!("{}\n", line);
-                buffer
-                    .write_all(line.as_bytes())
-                    .expect("unable to write data");
-            }
+                format!("{}\n", line)
+            };
+            buffer
+                .write_all(line.as_bytes())
+                .expect("unable to write data");
         }
     }
 }
