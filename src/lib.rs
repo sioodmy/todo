@@ -292,10 +292,12 @@ impl Todo {
 
         for (pos, line) in self.todo.iter().enumerate() {
             let mut entry = Entry::read_line(line);
-            if args.contains(&(pos + 1).to_string()) {
+            let line = if args.contains(&(pos + 1).to_string()) {
                 entry.done = !entry.done;
-            }
-            let line = entry.file_line();
+                entry.file_line()
+            } else {
+                format!("{}\n", line)
+            };
             
             data.push_str(&line);
         }
