@@ -20,7 +20,8 @@ impl Entry {
     }
 
     pub fn file_line(&self) -> String {
-        format!("{} {}\n", self.todo_entry, self.done)
+        let symbol = if self.done { "[*] " } else { "[ ] " };
+        format!("{}{}\n", symbol, self.todo_entry,)
     }
 
     pub fn list_line(&self, number: usize) -> String {
@@ -38,10 +39,8 @@ impl Entry {
     }
 
     pub fn read_line(line: &String) -> Self {
-        let line_vec: Vec<&str> = line.split_whitespace().collect();
-        let todo_entry = line_vec[0].to_string();
-        let done = line_vec[1].parse().expect("Could not convert the status to bool");
-
+        let done = &line[..4] == "[*] ";
+        let todo_entry = (&line[4..]).to_string();
         Self {
             todo_entry,
             done,
