@@ -312,14 +312,18 @@ impl Todo {
         }
         // Opens the TODO file with a permission to overwrite it
         let todofile = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open(&self.todo_path)
-        .expect("Couldn't open the todofile");
+            .write(true)
+            .truncate(true)
+            .open(&self.todo_path)
+            .expect("Couldn't open the todofile");
         let mut buffer = BufWriter::new(todofile);
 
         for (pos, line) in self.todo.iter().enumerate() {
-            let line = if args[0].contains(&(pos + 1).to_string()) {
+            let line = if args[0]
+                .parse::<usize>()
+                .expect("Failed to parse string to integer")
+                == (pos + 1)
+            {
                 let mut entry = Entry::read_line(line);
                 entry.todo_entry = args[1].clone();
                 entry.file_line()
