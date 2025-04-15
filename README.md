@@ -14,7 +14,7 @@ Add `todo.url = "github:sioodmy/todo";` to your inputs. And `inputs.todo.package
 
 ### other distros
 
-use `cargo build --release` to compile todo and copy `target/release/todo` to `/usr/bin`
+use `cargo build --release` to compile todo and copy `target/release/todo` to `/usr/bin/todo.sh`
 
 ## note
 
